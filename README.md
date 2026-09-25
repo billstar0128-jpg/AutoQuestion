@@ -38,6 +38,210 @@ python -m venv .venv-win
 
 无需激活虚拟环境。普通 AUTO、Vision 和固定 Offline Demo 不需要安装 Chromium runtime；本地 DOM Demo 才需要，见下节。
 
+## Quick Start（小白版）
+
+如果看不懂上面的内容，这里还有一个更详细的 **Quick Start（小白版）**。
+
+AutoQuestion 目前运行在 Windows 上。你需要先安装标准的 **Windows Python 3.10 或更高版本**。
+
+### 1. 下载 AutoQuestion
+
+在当前 GitHub 页面右上方找到绿色的 **`<> Code`** 按钮。
+
+点击它，然后选择：
+
+**Download ZIP**
+
+浏览器会下载一个类似这样的文件：
+
+`AutoQuestion-main.zip`
+
+下载完成后，右键这个 ZIP 文件，选择：
+
+**全部解压**
+
+你可以把它解压到桌面、D 盘或者其他你容易找到的位置。
+
+例如：
+
+`D:\AutoQuestion-main`
+
+解压完成后，进入这个文件夹。
+
+你现在看到的文件中应该包括：
+
+- `main.py`
+- `README.md`
+- `requirements.txt`
+- `src`
+- `tests`
+
+只要你能看到 `main.py` 和 `requirements.txt`，就说明你已经进入了正确的 AutoQuestion 项目目录。
+
+> **注意：**这里说的“项目根目录”，就是**直接放着 `main.py` 的这一层文件夹**。
+>
+> 它不是 `D:\`，也不是 `D:\Projects`，更不是 `src` 文件夹。
+>
+> 例如，如果你的 AutoQuestion 文件夹位于：
+>
+> `D:\Projects\AutoQuestion`
+>
+> 并且下面这个文件真实存在：
+>
+> `D:\Projects\AutoQuestion\main.py`
+>
+> 那么：
+>
+> `D:\Projects\AutoQuestion`
+>
+> 就是项目根目录。
+
+---
+
+### 2. 在正确的文件夹里打开 PowerShell
+
+保持资源管理器停留在刚才这个**能够直接看到 `main.py` 的文件夹**。
+
+点击资源管理器顶部的地址栏，把里面原来的路径选中，然后输入：
+
+```text
+powershell
+```
+
+按 **Enter**。
+
+这时会打开一个 PowerShell 窗口。
+
+例如，你把 AutoQuestion 解压到了：
+
+`D:\Projects\AutoQuestion`
+
+那么 PowerShell 最下面应该显示类似：
+
+```powershell
+PS D:\Projects\AutoQuestion>
+```
+
+这就表示你打开的位置正确。
+
+如果显示的是：
+
+```powershell
+PS D:\Projects>
+```
+
+说明你还在 AutoQuestion 文件夹的上一层。
+
+可以输入：
+
+```powershell
+cd AutoQuestion
+```
+
+然后按 Enter。
+
+如果显示的是：
+
+```powershell
+PS D:\>
+```
+
+说明你距离 AutoQuestion 文件夹还差不止一层。
+
+总之最终应该让 PowerShell 变成类似：
+
+```powershell
+PS D:\Projects\AutoQuestion>
+```
+
+核心判断只有一个：
+
+> **PowerShell 当前所在的文件夹里，必须能够直接找到 `main.py`。**
+
+如果你不确定，也可以输入：
+
+```powershell
+dir
+```
+
+按 Enter。
+
+如果输出里能看到：
+
+- `main.py`
+- `requirements.txt`
+- `README.md`
+
+就说明你现在的位置正确。
+
+---
+
+### 3. 创建 AutoQuestion 自己的 Python 环境
+
+确认 PowerShell 已经位于 AutoQuestion 项目根目录后，复制下面这一行：
+
+```powershell
+python -m venv .venv-win
+```
+
+按 **Enter**。
+
+第一次执行可能需要几秒。
+
+完成后，AutoQuestion 文件夹里会多出一个：
+
+`.venv-win`
+
+这是 AutoQuestion 自己使用的 Python 环境。
+
+**你不需要手动打开这个文件夹，也不需要激活它。**
+
+---
+
+### 4. 安装运行所需的组件
+
+继续复制下面这一行：
+
+```powershell
+.\.venv-win\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+按 **Enter**。
+
+程序会自动下载 AutoQuestion 运行所需要的 Python 组件。
+
+安装过程中看到大量英文输出属于正常现象，请等待命令执行结束。
+
+如果最后没有出现明显的红色 `ERROR`，通常就可以继续下一步。
+
+如果安装失败，可以把 PowerShell 最后几行报错截图下来，再到 GitHub Issue 中反馈。
+
+---
+
+### 5. 第一次启动 AutoQuestion
+
+安装完成后，继续输入：
+
+```powershell
+.\.venv-win\Scripts\python.exe main.py
+```
+
+按 **Enter**。
+
+第一次运行时，AutoQuestion 会自动进入设置向导。
+
+接下来你需要配置：
+
+- AI Provider
+- API Base URL
+- Model ID
+- Vision 能力
+- Input Mode
+- API Key
+
+后续配置方法请继续阅读下面的 **First-run Setup**。
+
+
 ### First-run Setup
 
 没有有效保存配置或完整显式配置时，程序进入向导。以 DeepSeek 为例：选择 Provider → 确认 API root → 填账户可调用的 Model ID → 确认这个模型的图片能力 → 选择 AUTO → 安全输入 Key → 选择 Windows Credential Manager 或 session-only → 确认保存。
