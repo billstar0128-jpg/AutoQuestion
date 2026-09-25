@@ -13,7 +13,7 @@ M13 historical checks below remain recorded. M14 Phase A passed, including the u
 - [x] M14 real GitHub Actions green
 - [x] M14 fresh GitHub clone and remote secret audit
 - [x] M14 repository page audit
-- [ ] M14 v0.1.0rc1 tag and Pre-release
+- [x] M14 v0.1.0rc1 tag and Pre-release
 
 - [x] All automated tests pass
 - [x] pytest pass
@@ -63,6 +63,7 @@ M13 historical checks below remain recorded. M14 Phase A passed, including the u
 - [x] CI passes on GitHub: Windows CPython 3.10.11 / 3.12.10 / 3.14.7
 - [x] RC tag / Pre-release authorized; Stable remains a separate future user decision
 
-License selection complete: Apache-2.0. Any unchecked M14 gates remain pending.
+M14 publication gates complete. License: Apache-2.0. The historical user-manual checklist above remains attributed to the user's acceptance, not agent reruns.
 Repository: https://github.com/billstar0128-jpg/AutoQuestion
-CI and publication results are recorded in the M14 validation document after execution.
+Release: [v0.1.0rc1 Pre-release](https://github.com/billstar0128-jpg/AutoQuestion/releases/tag/v0.1.0rc1).
+CI and publication results are recorded in the M14 validation document. Stable remains unpublished.

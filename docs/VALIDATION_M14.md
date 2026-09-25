@@ -1,7 +1,7 @@
 # M14 Validation / Publication Status
 
 Phase A: PASS. The user ran the unchanged visible smoke in a foreground terminal: 1 test passed in 9.441 s.
-Phase B: all pre-release gates passed on the tested source. Tag and Pre-release follow final documentation commit CI.
+Phase B: complete. v0.1.0rc1 was published as a source-only GitHub Pre-release after the gates below passed.
 Version: 0.1.0rc1; Apache-2.0. Stable release is not authorized.
 Repository: https://github.com/billstar0128-jpg/AutoQuestion (public).
 
@@ -148,3 +148,24 @@ of saved app configuration; dedicated CLI profiles contain only offline test con
 
 Release scope remains 0.1.0rc1, source-only, Pre-release and not Latest/Stable. No binaries or PyPI
 publication. Final tag/release status is available on the repository's GitHub Releases page.
+
+## Publication result
+
+Release commit: `3f6b5b92a1d9e9af38203ae6bd5fc783f36dbf21`.
+[Final release-commit CI](https://github.com/billstar0128-jpg/AutoQuestion/actions/runs/36151859299)
+passed all three Python jobs. This commit changes only six Markdown documents relative to the
+fully tested fresh clone at `699fc2834fb5805df7b9c29aaf5687cdc933ae6d`.
+
+The initial real GitHub clone and full tests succeeded. A later attempt to fast-forward its
+documentation hit two Git HTTPS connection resets and a bounded retry timeout. GitHub REST remained
+available: the remote comparison confirmed unchanged program source; all six changed documents
+were fetched, matched against audited local files and scanned; the full remote tree matched the
+82-file allowed inventory. This documentation sync network issue did not invalidate the earlier
+fresh-clone install or regression. No secrets were found, and no force push was used.
+
+The lightweight v0.1.0rc1 tag was created through GitHub REST and locally at the exact release
+commit. [GitHub Pre-release](https://github.com/billstar0128-jpg/AutoQuestion/releases/tag/v0.1.0rc1)
+was created with prerelease=true and latest=false; it is not a draft and has no uploaded assets.
+Its body exactly matches the separate Release Notes document. GitHub supplies the source archives.
+No v0.1.0 Stable release was created. This completion record follows the immutable release commit;
+it does not move or replace the RC tag.
