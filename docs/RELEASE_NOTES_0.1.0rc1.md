@@ -16,7 +16,7 @@ Windows 上的第一个公开 Release Candidate，按 Python 源码项目分发�
 从 [README Quick Start](https://github.com/billstar0128-jpg/AutoQuestion#quick-start) 克隆完整源码，在 Windows 上创建新虚拟环境、安装 requirements.txt，再运行 main.py。
 没有 Key 时可选择 Offline Demo。普通 AUTO / Vision 不需要 Chromium runtime；本地 DOM Demo 需安装 Playwright Chromium。
 
-本机已验证 CPython 3.14.6；各 Python 版本的线上验证状态见 [Actions](https://github.com/billstar0128-jpg/AutoQuestion/actions/workflows/ci.yml) 和 [M14 验证记录](https://github.com/billstar0128-jpg/AutoQuestion/blob/main/docs/VALIDATION_M14.md)。
+本机已验证 CPython 3.14.6；Windows GitHub CI 已通过 3.10.11 / 3.12.10 / 3.14.7。真实 GitHub 新克隆的安装、首次 Setup 和完整回归已通过。详细结果见 [Actions](https://github.com/billstar0128-jpg/AutoQuestion/actions/workflows/ci.yml) 和 [M14 验证记录](https://github.com/billstar0128-jpg/AutoQuestion/blob/main/docs/VALIDATION_M14.md)。
 测试方法见 [Development](https://github.com/billstar0128-jpg/AutoQuestion/blob/main/docs/DEVELOPMENT.md)。
 
 ## 已知限制

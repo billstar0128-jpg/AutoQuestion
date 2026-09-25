@@ -1,6 +1,6 @@
 # Development
 
-在完整源码根目录使用标准 Windows CPython。最低目标 3.10，本机实测 3.14.6；CI 的 3.10/3.12/3.14 matrix 尚未在线执行，不能宣传全部已验证。
+在完整源码根目录使用标准 Windows CPython。最低版本 3.10，本机实测 3.14.6；Windows GitHub CI 已通过 3.10.11 / 3.12.10 / 3.14.7。其他环境未经验证，交互桌面行为仍需本机验收。
 
 ```powershell
 python -m venv .venv-win
@@ -28,7 +28,7 @@ $env:PLAYWRIGHT_BROWSERS_PATH = '0'
 
 AUTOQUESTION_CI=1 显式跳过 5 个交互桌面测试：Entrypoint 1、NativeHotkey 2、Reliability native lifecycle 1、Doctor held-hotkey 1。其余单元测试、Mock Win32 Credential ABI、真实 headless Chromium、配置、secret、Router 和 Startup UX 都运行。可见 smoke 不进入 CI，无 WPS、物理 F8、真实 API 或真实凭据写入。
 
-本机全量回归不要设置此变量。模拟 CI 时设置后运行相同 pytest/unittest，完成后移除。工作流使用临时 APPDATA、只读权限、不需要 API Secret、不上传 artifacts。CI workflow prepared locally. It has not yet run on GitHub Actions.
+本机全量回归不要设置此变量。模拟 CI 时设置后运行相同 pytest/unittest，完成后移除。工作流使用临时 APPDATA、只读权限、不需要 API Secret、不上传 artifacts。真实 GitHub Actions 结果见 [M14 validation](VALIDATION_M14.md)。
 
 ## Clean-room
 

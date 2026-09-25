@@ -22,7 +22,7 @@
 
 ## Quick Start
 
-准备标准 **Windows CPython**，不要使用 MSYS2/MinGW Python。最低语法和依赖目标是 Python 3.10；当前本机实际验证 **CPython 3.14.6**，3.10 / 3.12 / 3.14 的 Windows CI 已配置，但尚未在线运行。其他环境尚不能视为已验证支持。
+准备标准 **Windows CPython**，不要使用 MSYS2/MinGW Python。最低版本是 Python 3.10；当前本机实际验证 **CPython 3.14.6**，Windows GitHub CI 已通过 **3.10.11 / 3.12.10 / 3.14.7**。其他环境尚不能视为已验证支持。CI 跳过交互桌面测试，物理窗口验收另在 Windows 本机完成。
 
 从 [GitHub 仓库](https://github.com/billstar0128-jpg/AutoQuestion) 取得完整源码，在项目根目录打开 PowerShell。
 

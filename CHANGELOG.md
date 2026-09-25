@@ -7,7 +7,7 @@
 - Windows 常驻 F8 分析、ESC 退出、BUSY 和 debounce。
 - single_choice、multiple_choice、true_false 的 DOM/Text/Vision 协议与答案一致性校验。
 - First-run Setup、六个 Provider Profile、Windows Credential Manager 和 session-only Key。
-- Doctor、配置管理命令、发布审查工具、用户/维护文档及 Windows CI 工作流草稿。
+- Doctor、配置管理命令、发布审查工具、用户/维护文档及已通过的 Windows CI 工作流。
 
 ### Changed
 
@@ -25,7 +25,7 @@
 
 ### Known limitations
 
-- 仅 Windows；本机验证 CPython 3.14.6，最低语法/依赖目标 3.10，其他版本待 CI 验证。
+- 仅 Windows；本机验证 CPython 3.14.6，Windows GitHub CI 验证 3.10.11 / 3.12.10 / 3.14.7；其他环境未经验证。
 - DOM 只支持项目受管理 Demo；不读取任意个人浏览器 DOM。
 - Fake 只支持内置题，不支持 Vision；模型准确性与各厂商兼容性需人工验证。
 - 不完整支持填空/简答，不支持原生 Anthropic、OCR 或任何自动作答动作。

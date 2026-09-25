@@ -1,7 +1,7 @@
 # M14 Validation / Publication Status
 
 Phase A: PASS. The user ran the unchanged visible smoke in a foreground terminal: 1 test passed in 9.441 s.
-Phase B: publication in progress; CI and fresh GitHub clone gates remain pending until recorded below.
+Phase B: all pre-release gates passed on the tested source. Tag and Pre-release follow final documentation commit CI.
 Version: 0.1.0rc1; Apache-2.0. Stable release is not authorized.
 Repository: https://github.com/billstar0128-jpg/AutoQuestion (public).
 
@@ -83,3 +83,68 @@ The public repository was created without generated files, the remote Descriptio
 and origin points to that repository. GitHub private vulnerability reporting was enabled as the security contact channel.
 Release Notes remain separate from the introduction. Actions, fresh clone, remote/page audits and tag/release results will be recorded after execution.
 The user reports M13 manual acceptance complete; real Provider tests were not rerun by the agent.
+
+## Actual GitHub checks (2026-09-25)
+
+Initial main commit: `699fc2834fb5805df7b9c29aaf5687cdc933ae6d`.
+Staged audit: 82 allowed public files, zero findings. Two trailing blank lines were removed before commit.
+README/URL update regression: 235 pytest tests and 365 subtests passed (42.44 s).
+Main push succeeded without force.
+
+[Initial GitHub Actions run](https://github.com/billstar0128-jpg/AutoQuestion/actions/runs/36117722201): all three Windows jobs passed on the first run; no CI fix was needed.
+
+| CPython | pytest | unittest |
+|---|---|---|
+| 3.10.11 | 230 passed, 5 skipped, 362 subtests; 25.55 s | 235 run, 5 skipped; 22.444 s |
+| 3.12.10 | 230 passed, 5 skipped, 362 subtests; 24.93 s | 235 run, 5 skipped; 21.845 s |
+| 3.14.7 | 230 passed, 5 skipped, 362 subtests; 19.54 s | 235 run, 5 skipped; 16.449 s |
+
+Each job also passed compileall, pip check, release audit, version and Doctor.
+The five skips are the explicitly documented interactive desktop tests, not test failures.
+The local full suite did not skip them; visible smoke evidence is separately attributed above.
+
+GitHub page/API audit passed: remote Description and README source match approved local content;
+rendered README HTML has headings, Chinese text and all technical sections; GitHub detects Apache-2.0.
+SECURITY, PRIVACY, CONTRIBUTING, CHANGELOG, Actions, both Issue templates and the PR template exist.
+Private vulnerability reporting is enabled. Relative links pass the candidate audit.
+
+## Real GitHub fresh clone
+
+Cloned the public HTTPS repository into a new temporary directory after CI passed, without reusing the
+development tree, virtual environment, user configuration or credentials. New APPDATA, LOCALAPPDATA,
+USERPROFILE and temporary directories were used. No real provider calls were made.
+
+Actual main.py entrypoint (runpy bootstrap; only stdin isatty overridden for scripted input):
+Offline Demo first-run Setup -> READY -> ESC -> STOPPED passed; second startup skipped Setup and
+passed the same lifecycle; an AUTO override reached READY without opening a Demo, then exited normally.
+These checks used a separate temporary configuration profile.
+
+Fresh-clone URL/Model tests: all 15 unittest methods passed (0.632 s).
+An additional real main.py --setup invocation rejected `model-name` at Base URL before the Model
+prompt, rejected `https://example.com` at Model ID, then cancelled without saving or starting the app.
+The temporary harness initially matched an earlier introductory mention of Model ID; its assertion
+was corrected to match the exact field prompt. No product change was needed.
+
+Visible fresh-clone main.py --open-demo passed with INPUT_MODE=dom and LLM_PROVIDER=fake:
+real managed Chromium opened the local DOM Demo, a native F8 hotkey message produced the fake
+answer, READY returned, and a native ESC hotkey message exited with STOPPED and code 0.
+This was an automated hotkey-message test, not a claim of physical key presses or real-model accuracy.
+Browser downloads used the fresh venv's private Playwright runtime; the slow CDN transfer was allowed
+to finish by replacing the temporary orchestration wait, without changing product timeouts or reusing an old runtime.
+
+Remote secret audit passed: 82 tracked public files, one complete initial commit, 82 historical file
+versions, zero findings. Candidate inventory exactly matches tracked files. No private screenshots,
+logs, user config, real credentials or .env are tracked. Only .env.example is public.
+Scans use the project's limited patterns plus GitHub token patterns; they are not a guarantee against every possible secret format.
+
+Fresh-clone full regression on local CPython 3.14.6: pytest 235 passed, 365 subtests passed, zero
+failures/skips (32.57 s); unittest 235 passed, zero failures/skips (31.470 s).
+The real headless Chromium AUTO --open-demo test verified DOM -> Canvas fallback to VISION -> DOM,
+complete Canvas drawing, no selected answer inputs, and browser/thread cleanup.
+First-run optional Demo No/Yes and subsequent normal startup also passed.
+Runtime/development installs, editable metadata install, version, Doctor, --show-config,
+compileall, pip check and release_audit.py all passed. The shared isolated profile remained free
+of saved app configuration; dedicated CLI profiles contain only offline test configuration.
+
+Release scope remains 0.1.0rc1, source-only, Pre-release and not Latest/Stable. No binaries or PyPI
+publication. Final tag/release status is available on the repository's GitHub Releases page.

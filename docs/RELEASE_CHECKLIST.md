@@ -1,6 +1,6 @@
 # Release Checklist — 0.1.0rc1
 
-READY FOR MANUAL PUBLICATION REVIEW。不是自动发布许可。自动结果见 [Validation](VALIDATION_M13.md)，人工步骤见 [M13 Acceptance](MANUAL_ACCEPTANCE_M13.md)。下面未完成项不能靠推断勾选。
+M14 publication checks。用户已明确授权公开 main push 和 v0.1.0rc1 Pre-release；Stable 不在本轮范围内。历史自动结果见 [Validation](VALIDATION_M13.md)，人工步骤见 [M13 Acceptance](MANUAL_ACCEPTANCE_M13.md)。下面未完成项不能靠推断勾选。
 
 ## Local evidence
 
@@ -9,10 +9,10 @@ M13 historical checks below remain recorded. M14 Phase A passed, including the u
 - [x] M14 offline URL / Model immediate validation and regression tests
 - [x] M14 full pytest / unittest / compileall / pip check / Doctor
 - [x] M14 visible browser smoke (user foreground run passed; earlier activation failures recorded)
-- [ ] M14 Git tracked / staged / history publication preflight
-- [ ] M14 real GitHub Actions green
-- [ ] M14 fresh GitHub clone and remote secret audit
-- [ ] M14 repository page audit
+- [x] M14 Git tracked / staged / history publication preflight
+- [x] M14 real GitHub Actions green
+- [x] M14 fresh GitHub clone and remote secret audit
+- [x] M14 repository page audit
 - [ ] M14 v0.1.0rc1 tag and Pre-release
 
 - [x] All automated tests pass
@@ -52,17 +52,17 @@ M13 historical checks below remain recorded. M14 Phase A passed, including the u
 - [ ] --show-config leaks no secret
 - [ ] --doctor leaks no secret
 
-## Publication gates — pending
+## Publication gates
 
 - [x] License selected: Apache-2.0; standard text in [LICENSE](../LICENSE)
-- [ ] Attribution and chosen license reviewed
+- [x] Attribution and chosen license reviewed (standard Apache-2.0; no bundled third-party source requiring NOTICE)
 - [x] Real repository URLs and private security contact supplied
-- [ ] Staged-file and history secret audit completed before commit/push
-- [ ] Local clone passes (requires a local commit; otherwise N/A)
+- [x] Staged-file audit before initial commit/push and complete remote history audit passed
+- [x] Real GitHub fresh clone passes (supersedes the historical local-copy check)
 - [x] User explicitly authorized M14 public push and RC pre-release
-- [ ] CI later passes on GitHub
-- [ ] Stable version / tag / GitHub Release separately decided
+- [x] CI passes on GitHub: Windows CPython 3.10.11 / 3.12.10 / 3.14.7
+- [x] RC tag / Pre-release authorized; Stable remains a separate future user decision
 
-License selection complete: Apache-2.0. Other publication gates remain pending.
+License selection complete: Apache-2.0. Any unchecked M14 gates remain pending.
 Repository: https://github.com/billstar0128-jpg/AutoQuestion
 CI and publication results are recorded in the M14 validation document after execution.
