@@ -1,0 +1,7 @@
+# Schema validation (v2) and the official OpenAI-compatible text API client.
+pydantic>=2.12,<3
+openai>=2,<3
+mss>=10.2,<11
+Pillow>=11,<13
+python-dotenv>=1,<2
+playwright>=1.58,<2

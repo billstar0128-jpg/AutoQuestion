@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutoQuestion · 本地练习</title>
+  <style>
+    :root { color-scheme: light; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; color: #172a3a; background: #eef3f6; }
+    body { margin: 0; padding: 40px 20px; }
+    main { max-width: 720px; margin: auto; padding: 32px; background: white; border-radius: 16px; }
+    h1 { margin-top: 0; font-size: 28px; }
+    p { line-height: 1.7; color: #4a6072; }
+    fieldset { margin: 24px 0; padding: 24px; border: 1px solid #b7cbd6; border-radius: 10px; }
+    legend { padding: 0 8px; font-weight: 600; font-size: 22px; }
+    label { display: flex; gap: 12px; align-items: center; padding: 12px; margin: 6px 0; border-radius: 6px; background: #f5f8fa; font-size: 20px; cursor: pointer; }
+    input { width: 18px; height: 18px; accent-color: #176a86; }
+    nav { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+    button { padding: 10px 22px; border: 1px solid #176a86; border-radius: 6px; background: white; color: #176a86; font: inherit; cursor: pointer; }
+    button:disabled { opacity: .4; cursor: default; }
+    :focus-visible { outline: 3px solid #dc9b2f; outline-offset: 3px; }
+    [hidden] { display: none !important; }
+    small { display: block; margin-top: 24px; color: #526778; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>AutoQuestion 本地练习</h1>
+    <p>每次显示一道题。使用下方按钮手动切换，按 F8 分析当前题目。此页面不计分、不提交、不联网。</p>
+    <fieldset data-question-id="capital" data-question-type="single_choice">
+      <legend>法国的首都是哪里？</legend>
+      <label><input type="radio" name="capital" value="paris">A. 巴黎</label>
+      <label><input type="radio" name="capital" value="london">B. 伦敦</label>
+      <label><input type="radio" name="capital" value="berlin">C. 柏林</label>
+      <label><input type="radio" name="capital" value="rome">D. 罗马</label>
+    </fieldset>
+    <fieldset hidden data-question-id="planet" data-question-type="single_choice">
+      <legend>太阳系中最大的行星是？</legend>
+      <label><input type="radio" name="planet" value="jupiter">木星</label>
+      <label><input type="radio" name="planet" value="earth">地球</label>
+      <label><input type="radio" name="planet" value="mars">火星</label>
+      <label><input type="radio" name="planet" value="venus">金星</label>
+    </fieldset>
+    <fieldset hidden data-question-id="languages" data-question-type="multiple_choice">
+      <legend>以下哪些属于编程语言？</legend>
+      <label><input type="checkbox" name="languages" value="python">Python</label>
+      <label><input type="checkbox" name="languages" value="c">C</label>
+      <label><input type="checkbox" name="languages" value="html">HTML</label>
+      <label><input type="checkbox" name="languages" value="java">Java</label>
+    </fieldset>
+    <fieldset hidden data-question-id="orbit" data-question-type="true_false">
+      <legend>地球绕太阳公转。</legend>
+      <label><input type="radio" name="orbit" value="true">正确</label>
+      <label><input type="radio" name="orbit" value="false">错误</label>
+    </fieldset>
+    <nav aria-label="题目导航">
+      <button id="previous" type="button" disabled>上一题</button>
+      <span id="progress" aria-live="polite">第 1 / 4 题</span>
+      <button id="next" type="button">下一题</button>
+    </nav>
+    <small>支持单选、多选和判断题分析；答案显示在控制台。选项只能由你手动选择。</small>
+    <p><a href="demo_canvas_quiz.html">打开 Canvas 测试题</a></p>
+  </main>
+  <script>
+    const questions = Array.from(document.querySelectorAll('fieldset'));
+    let current = 0;
+    function showQuestion(index) {
+      current = Math.max(0, Math.min(questions.length - 1, index));
+      questions.forEach((question, i) => { question.hidden = i !== current; });
+      document.getElementById('progress').textContent = `第 ${current + 1} / ${questions.length} 题`;
+      document.getElementById('previous').disabled = current === 0;
+      document.getElementById('next').disabled = current === questions.length - 1;
+    }
+    document.getElementById('previous').addEventListener('click', () => showQuestion(current - 1));
+    document.getElementById('next').addEventListener('click', () => showQuestion(current + 1));
+  </script>
+</body>
+</html>

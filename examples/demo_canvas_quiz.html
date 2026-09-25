@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutoQuestion · Canvas 本地练习</title>
+  <style>
+    body { font-family: "Microsoft YaHei", sans-serif; margin: 32px auto; padding: 0 20px; max-width: 760px; background: #eef3f6; color: #172a3a; }
+    canvas { display: block; width: 100%; background: white; border-radius: 12px; margin: 20px 0; }
+    a { color: #176a86; }
+  </style>
+</head>
+<body>
+  <h1>Canvas 本地练习</h1>
+  <p>按 F8 分析。题目以画布显示，无可提取的单选控件；AUTO 将尝试 Vision。</p>
+  <canvas id="quiz" width="1440" height="760"></canvas>
+  <a href="demo_quiz.html">返回 DOM 测试题</a>
+  <script>
+    const context = document.getElementById('quiz').getContext('2d');
+    context.scale(2, 2);
+    context.fillStyle = '#172a3a';
+    context.font = 'bold 28px "Microsoft YaHei", sans-serif';
+    context.fillText('太阳系中最大的行星是？', 36, 64);
+    context.font = '24px "Microsoft YaHei", sans-serif';
+    ['木星', '地球', '火星', '金星'].forEach((text, i) => {
+      const y = 128 + i * 64;
+      context.beginPath(); context.arc(48, y - 8, 9, 0, Math.PI * 2); context.stroke();
+      context.fillText(text, 76, y);
+    });
+  </script>
+</body>
+</html>

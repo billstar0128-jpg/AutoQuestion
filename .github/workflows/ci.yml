@@ -1,0 +1,47 @@
+name: Windows source checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.12', '3.14']
+    env:
+      AUTOQUESTION_CI: '1'
+      PLAYWRIGHT_BROWSERS_PATH: '0'
+      PYTHONUTF8: '1'
+      INPUT_MODE: demo
+      LLM_PROVIDER: fake
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Isolate application configuration
+        run: |
+          $isolatedConfig = Join-Path $env:RUNNER_TEMP 'autoquestion-appdata'
+          New-Item -ItemType Directory -Force $isolatedConfig | Out-Null
+          "APPDATA=$isolatedConfig" >> $env:GITHUB_ENV
+      - run: python -m venv .venv-win
+      - run: .\.venv-win\Scripts\python.exe -m pip install -r requirements-dev.txt
+      - run: .\.venv-win\Scripts\python.exe -m playwright install chromium
+      - run: .\.venv-win\Scripts\python.exe -m pytest -q
+      - run: .\.venv-win\Scripts\python.exe -m unittest discover -s tests -v
+      - run: .\.venv-win\Scripts\python.exe -m compileall -q main.py src tests tools
+      - run: .\.venv-win\Scripts\python.exe -m pip check
+      - run: .\.venv-win\Scripts\python.exe tools/release_audit.py
+      - run: .\.venv-win\Scripts\python.exe main.py --version
+      - run: .\.venv-win\Scripts\python.exe main.py --doctor
+      # Visible HWND/focus smoke and real providers/credentials are local manual tests.

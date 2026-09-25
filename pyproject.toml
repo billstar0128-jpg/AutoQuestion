@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=77,<85"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autoquestion"
+description = "Windows local practice-question assistant with explicit DOM and Vision input"
+readme = "README.md"
+requires-python = ">=3.10"
+dynamic = ["version", "dependencies"]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+
+[project.urls]
+Repository = "https://github.com/billstar0128-jpg/AutoQuestion"
+Issues = "https://github.com/billstar0128-jpg/AutoQuestion/issues"
+
+[tool.setuptools.dynamic]
+version = {attr = "autoquestion.__version__"}
+dependencies = {file = ["requirements.txt"]}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["autoquestion*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+"autoquestion.capture" = ["dom_extract.js"]
