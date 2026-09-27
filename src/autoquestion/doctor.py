@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import socket
 import subprocess
 import sys
 import warnings
@@ -17,7 +18,8 @@ from .secret_safety import scan_project
 
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGES = (('pydantic', 'pydantic'), ('openai', 'openai'), ('mss', 'mss'),
-            ('Pillow', 'PIL.Image'), ('python-dotenv', 'dotenv'), ('playwright', 'playwright.sync_api'))
+            ('Pillow', 'PIL.Image'), ('python-dotenv', 'dotenv'), ('playwright', 'playwright.sync_api'),
+            ('websockets', 'websockets.sync.server'))
 PUBLIC_CONFIG = ('HOTKEY', 'EXIT_KEY', 'DEBOUNCE_MS', 'INPUT_MODE', 'IMAGE_MAX_EDGE',
                  'LLM_PROVIDER', 'LLM_BASE_URL', 'LLM_MODEL', 'LLM_SUPPORTS_VISION', 'LLM_TIMEOUT_SECONDS')
 
@@ -167,6 +169,23 @@ def user_configuration_checks(environ, *, store=None, backend=None):
     return checks, saved.to_env(), present
 
 
+def bridge_checks(root):
+    # Metadata and bind capability only. No listener, handshake, browser or DOM access.
+    from .bridge_protocol import PORT, VERSION
+    files = ('extension/manifest.json', 'extension/worker.js', 'extension/extractor.js',
+             'extension/popup.html', 'extension/popup.js')
+    checks = [Check('OK' if all((root / name).is_file() for name in files) else 'FAIL',
+                    'Browser DOM extension components; protocol ' + str(VERSION))]
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+            probe.bind(('127.0.0.1', PORT))
+        checks.append(Check('OK', f'Browser DOM Bridge loopback bind available: 127.0.0.1:{PORT}'))
+    except OSError:
+        checks.append(Check('WARN', 'Browser DOM Bridge port unavailable; another instance may be running'))
+    checks.append(Check('OK', 'Extension connection not probed; pairing is memory-only and not user config'))
+    return checks
+
+
 def run_doctor(*, environ=None, root=None, cwd=None, env_file_requested=False):
     values = os.environ if environ is None else environ
     project = ROOT if root is None else Path(root)
@@ -183,6 +202,7 @@ def run_doctor(*, environ=None, root=None, cwd=None, env_file_requested=False):
     checks.extend(user_checks)
     checks.extend(configuration_checks(ChainMap(values, saved_values), stored_credential_available=credential_available))
     checks.extend(project_checks(project, Path.cwd() if cwd is None else Path(cwd)))
+    checks.extend(bridge_checks(project))
     checks.append(chromium_check(values))
     for check in checks:
         print(f'[{check.level}] {check.message}')

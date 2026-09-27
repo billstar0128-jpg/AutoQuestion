@@ -1,6 +1,6 @@
 # Technical Notes
 
-从 M1–M12 README 保留的协议和实现细节。当前启动及验收命令以 [README](../README.md) 和 [M13 Acceptance](MANUAL_ACCEPTANCE_M13.md) 为准。Canvas 手动验收须用 --open-demo；普通 AUTO 不自动启动浏览器。
+从 M1–M12 README 保留的历史协议和实现细节。当前 0.2.0 启动、路由和验收以 [README](../README.md)、[Architecture](ARCHITECTURE.md) 和 [M15 Acceptance](MANUAL_ACCEPTANCE_M15.md) 为准。受管理 Canvas 手动验收使用 --open-demo；普通 AUTO 不自动启动浏览器。
 
 ## 数据结构与一致性策略
 

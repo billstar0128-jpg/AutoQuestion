@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><title>AutoQuestion canvas_question</title>
+<body><nav><a href="single_choice.html">single_choice</a> | <a href="multiple_choice.html">multiple_choice</a> | <a href="true_false.html">true_false</a> | <a href="no_labels.html">no_labels</a> | <a href="noise_page.html">noise_page</a> | <a href="canvas_question.html">canvas_question</a> | <a href="iframe_question.html">iframe_question</a> | <a href="spa_like_question.html">spa_like_question</a></nav>
+<canvas id="question" width="700" height="360"></canvas>
+<script>const c = document.getElementById('question').getContext('2d'); c.font = '24px sans-serif';
+['太阳系中最大的行星是？','木星','地球','火星','金星'].forEach((s,i) => c.fillText(s,30,45+i*60));</script>
+</body></html>

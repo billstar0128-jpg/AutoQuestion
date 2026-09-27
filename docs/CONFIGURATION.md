@@ -26,7 +26,7 @@ $env:LLM_PROVIDER = 'fake'
 .\.venv-win\Scripts\python.exe main.py
 ```
 
-以上固定 MANUAL 首都题无需浏览器。离线四题 DOM 先安装 Chromium，再将 INPUT_MODE 改为 dom，启动相同命令。AUTO DOM 路由测试用 auto 和 `main.py --open-demo`。Fake 遇到 Canvas/外部窗口会在截图前提示 Vision 不可用。测试后用新的终端避免环境变量覆盖保存设置。
+以上固定 MANUAL 首都题无需浏览器。离线四题 DOM 先安装 Chromium，再将 INPUT_MODE 改为 dom，用 `main.py --open-demo` 启动。AUTO DOM 路由测试用 auto 和 `main.py --open-demo`。普通 Chrome/Edge 用 [扩展配对](BROWSER_DOM_SETUP.md)，无需 Playwright runtime。Fake 遇到 Canvas/外部窗口会在截图前提示 Vision 不可用。测试后用新的终端避免环境变量覆盖保存设置。
 
 ## Secure configuration
 

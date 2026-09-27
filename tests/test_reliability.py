@@ -116,7 +116,7 @@ class ReliabilityTests(unittest.TestCase):
                 with (patch('autoquestion.app.load_config', return_value=Config(input_mode='dom')),
                      patch('autoquestion.browser_session.BrowserSession', return_value=session),
                      patch.object(WindowsHotkeys, 'listen', listen), self.assertLogs('autoquestion', 'DEBUG') as logs):
-                    code = main([])
+                    code = main(['--open-demo'])
                 self.assertEqual(code, 1 if exit_kind == 'error' else 0)
                 self.assertEqual(len(observed), 1)
                 self.assertEqual(observed[0].state, Status.STOPPED)

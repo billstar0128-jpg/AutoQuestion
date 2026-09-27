@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><title>AutoQuestion spa_like_question</title>
+<body><nav><a href="single_choice.html">single_choice</a> | <a href="multiple_choice.html">multiple_choice</a> | <a href="true_false.html">true_false</a> | <a href="no_labels.html">no_labels</a> | <a href="noise_page.html">noise_page</a> | <a href="canvas_question.html">canvas_question</a> | <a href="iframe_question.html">iframe_question</a> | <a href="spa_like_question.html">spa_like_question</a></nav>
+<h1>SPA 测试</h1><div id="quiz"></div><button id="next">手动切换题目</button>
+<script>
+let second = false;
+function render() {
+const stem = second ? '地球绕太阳公转。' : '太阳系中最大的行星是？';
+const options = second ? ['正确','错误'] : ['木星','地球','火星','金星'];
+const container = document.createElement('fieldset'), legend = document.createElement('legend');
+legend.textContent = stem; container.append(legend);
+for (const text of options) { const p = document.createElement('p'), label = document.createElement('label'), input = document.createElement('input'); input.type='radio'; input.name='question'; label.append(input, document.createTextNode(text)); p.append(label); container.append(p); }
+document.getElementById('quiz').replaceChildren(container);
+}
+document.getElementById('next').addEventListener('click', () => { second = !second; render(); }); render();
+</script>
+</body></html>

@@ -13,7 +13,7 @@ from autoquestion.secret_safety import Finding, inspect_text
 ROOT_FILES = {'main.py', 'README.md', 'SECURITY.md', 'PRIVACY.md', 'CONTRIBUTING.md',
               'CHANGELOG.md', 'requirements.txt', 'requirements-dev.txt', 'pyproject.toml',
               '.gitignore', '.gitattributes', '.editorconfig', '.env.example', 'LICENSE', 'NOTICE'}
-DIRECTORIES = {'src', 'tests', 'examples', 'docs', '.github', 'tools'}
+DIRECTORIES = {'src', 'tests', 'examples', 'docs', '.github', 'tools', 'extension'}
 SUFFIXES = {'.py', '.js', '.html', '.md', '.txt', '.toml', '.yml', '.yaml'}
 IGNORED_DIRS = {'.git', '__pycache__', '.pytest_cache', '.venv', 'venv', '.idea', '.vscode',
                 'logs', 'screenshots', 'captures', 'build', 'dist', 'htmlcov', '.cache',
@@ -28,7 +28,12 @@ REQUIRED = (ROOT_FILES - {'LICENSE', 'NOTICE'}) | {
     f'docs/RELEASE_NOTES_{__version__}.md', '.github/workflows/ci.yml',
     '.github/ISSUE_TEMPLATE/bug_report.md', '.github/ISSUE_TEMPLATE/feature_request.md',
     '.github/pull_request_template.md', 'examples/demo_quiz.html', 'examples/demo_canvas_quiz.html',
-    'src/autoquestion/capture/dom_extract.js'}
+    'src/autoquestion/capture/dom_extract.js', 'extension/manifest.json', 'extension/worker.js',
+    'extension/extractor.js', 'extension/popup.html', 'extension/popup.js',
+    'docs/BROWSER_DOM_SETUP.md', 'docs/MANUAL_ACCEPTANCE_M15.md'} | {
+        f'examples/browser_dom/{name}.html' for name in (
+            'single_choice', 'multiple_choice', 'true_false', 'no_labels', 'noise_page',
+            'canvas_question', 'iframe_question', 'spa_like_question')}
 
 
 def excluded(path):
@@ -60,7 +65,8 @@ def candidate_files(root=ROOT):
                 else:
                     visit(path)
             elif (len(relative.parts) == 1 and path.name in ROOT_FILES) or (
-                    len(relative.parts) > 1 and path.suffix.lower() in SUFFIXES):
+                    len(relative.parts) > 1 and (path.suffix.lower() in SUFFIXES
+                    or relative.as_posix() == 'extension/manifest.json')):
                 result.append(path)
             else:
                 issues.append(Finding(relative.as_posix(), 0, 'unexpected candidate/binary; contents not read'))

@@ -1,6 +1,6 @@
 # Development
 
-在完整源码根目录使用标准 Windows CPython。最低版本 3.10，本机实测 3.14.6；Windows GitHub CI 已通过 3.10.11 / 3.12.10 / 3.14.7。其他环境未经验证，交互桌面行为仍需本机验收。
+在完整源码根目录使用标准 Windows CPython。最低版本 3.10，本机为 3.14.6；历史 0.1.0rc1 的 Windows CI 已通过 3.10.11 / 3.12.10 / 3.14.7。0.2.0 的远端 CI 尚待本轮发布流程验证，交互桌面行为须本机验收。
 
 ```powershell
 python -m venv .venv-win
@@ -54,8 +54,17 @@ AUTOQUESTION_CI=1 显式跳过 5 个交互桌面测试：Entrypoint 1、NativeHo
 | Pillow | 内存缩放与 PNG |
 | python-dotenv | 显式 env-file |
 | playwright | 本地 DOM、隔离 Doctor probe |
+| websockets 15 | 认证 localhost Browser DOM Bridge |
 
-pytest 仅为开发依赖；setuptools 仅为可选 metadata 构建后端。没有新增运行依赖或全面升级。依赖与浏览器不 vendor 进源码，各自保留许可证；正式再分发需复核。pip check 只验证依赖一致性，不是漏洞审计。
+pytest 仅为开发依赖；setuptools 仅为可选 metadata 构建后端。M15 只新增 websockets，不全面升级已有依赖。依赖与浏览器不 vendor 进源码，各自保留许可证；正式再分发需复核。pip check 只验证依赖一致性，不是漏洞审计。
+
+## M15 extension tests and manual boundary
+
+test_bridge_protocol / test_browser_bridge / test_browser_routing 覆盖限长协议、认证、断连/重连、真实 Windows TCP 所有者、进程匹配和 acquisition-only fallback。
+test_extension 使用真实 Chromium 执行交付的 JS，验证合成题、隐藏/输入值排除、SPA、同源 frame/open shadow。
+test_extension_transport 在独立临时配置加载原始 JS，通过真实 WebSocket Origin 与 Windows 进程匹配取题；自动 harness 只给临时 manifest 预授予合成 localhost 站点，避免把浏览器权限弹窗伪装为人工点击通过。原始 manifest 不包含默认站点权限。
+真实 Chrome / Edge 的扩展安装、权限弹窗、物理 F8、WPS 与 Canvas 由 [M15 人工清单](MANUAL_ACCEPTANCE_M15.md) 验收。
+集成测试会短暂使用 127.0.0.1:37841，运行前关闭 AutoQuestion，测试顺序执行。
 
 ## Design history
 

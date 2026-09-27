@@ -159,6 +159,7 @@ def main(argv: list[str] | None = None, *, parsed_args=None, runtime=None) -> in
 
     runner: TaskRunner | None = None
     browser = None
+    bridge = None
     try:
         if runtime is None and args.env_file is not None:
             load_env_file(args.env_file)
@@ -167,7 +168,7 @@ def main(argv: list[str] | None = None, *, parsed_args=None, runtime=None) -> in
         if open_demo and config.input_mode == "demo":
             raise ConfigError("--open-demo 不能与 INPUT_MODE=demo 组合；固定 MANUAL Demo 不使用浏览器。")
         # Only allocate the session (and its event-loop thread) when requested.
-        if config.input_mode == "dom" or open_demo:
+        if open_demo:
             from .browser_session import BrowserSession
             browser = BrowserSession()
             try:
@@ -179,19 +180,27 @@ def main(argv: list[str] | None = None, *, parsed_args=None, runtime=None) -> in
                 browser = None
                 LOGGER.warning("受管理 Demo 启动失败；仍可使用 Vision。请检查 Chromium runtime。")
         from .demo import make_demo_callback
+        if config.input_mode in {'auto', 'dom'}:
+            from .browser_bridge import BrowserBridge
+            bridge = BrowserBridge()
+            try:
+                bridge.start()
+            except (OSError, ImportError):
+                bridge.close()
+                bridge = None
+                LOGGER.warning('Browser DOM Bridge unavailable; check requirements and localhost port 37841.')
+            if getattr(args, 'pair_browser', False) and bridge is not None:
+                bridge.pair_dialog()
+        elif getattr(args, 'pair_browser', False):
+            raise ConfigError('--pair-browser 需要 INPUT_MODE=auto 或 dom。')
         if config.input_mode == "vision":
             from .vision import make_vision_prepare
             prepare = make_vision_prepare(config, lambda status: runner.update_status(status))
             runner = TaskRunner(prepare=prepare, debounce_ms=config.debounce_ms)
         elif config.input_mode in {"dom", "auto"}:
-            from .dom import make_dom_callback
-            if config.input_mode == "auto":
-                from .router import make_auto_prepare
-                runner = TaskRunner(prepare=make_auto_prepare(config, browser, lambda status: runner.update_status(status)),
-                                    debounce_ms=config.debounce_ms, prepare_status=Status.ROUTING)
-            else:
-                runner = TaskRunner(callback=make_dom_callback(config, browser, lambda status: runner.update_status(status)),
-                                    debounce_ms=config.debounce_ms)
+            from .router import make_auto_prepare
+            runner = TaskRunner(prepare=make_auto_prepare(config, browser, lambda status: runner.update_status(status), bridge=bridge),
+                                debounce_ms=config.debounce_ms, prepare_status=Status.ROUTING)
         else:
             runner = TaskRunner(callback=make_demo_callback(config), debounce_ms=config.debounce_ms)
         with WindowsHotkeys(config) as hotkeys:
@@ -208,11 +217,11 @@ def main(argv: list[str] | None = None, *, parsed_args=None, runtime=None) -> in
                     LOGGER.info("Demo opened for visual testing; Vision mode will not use DOM.")
                 LOGGER.info("Vision: F8 将把前台窗口截图发送给你配置的模型服务商；截图不保存到磁盘。")
             elif config.input_mode == "dom":
-                LOGGER.info("DOM: 分析受管理 Chromium 中的当前 Demo 题目；请手动点击上一题/下一题。")
+                LOGGER.info("DOM: 前台受管理 Demo 或已配对 Chrome / Edge；不可用时报告错误，不截图。")
             elif config.input_mode == "auto":
                 if browser is None:
-                    LOGGER.info("Managed Demo: not open. AUTO uses Vision for the foreground target; --open-demo enables local DOM testing.")
-                LOGGER.info("AUTO: 前台受管理页面优先 DOM；取题不可用时截取 F8 目标窗口并发送给配置的 Vision 服务商。截图不保存。")
+                    LOGGER.info("Managed Demo: not open; --open-demo enables local DOM testing.")
+                LOGGER.info("AUTO: 浏览器优先 DOM；取题不可用时 Vision；桌面窗口直接 Vision。截图不保存。")
             runner.ready()
             hotkeys.listen(runner)
         return 0
@@ -230,5 +239,9 @@ def main(argv: list[str] | None = None, *, parsed_args=None, runtime=None) -> in
             if runner is not None:
                 runner.close()
         finally:
-            if browser is not None:
-                browser.close()
+            try:
+                if browser is not None:
+                    browser.close()
+            finally:
+                if bridge is not None:
+                    bridge.close()

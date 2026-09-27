@@ -1,6 +1,6 @@
 # Contributing
 
-当前为 0.1.0rc1 公开候选，使用 [Apache License 2.0](LICENSE)。请在 [Issues](https://github.com/billstar0128-jpg/AutoQuestion/issues) 报告问题，在 [仓库](https://github.com/billstar0128-jpg/AutoQuestion) 提交 PR；安全问题使用私密报告渠道。先阅读 [README](README.md)、[Architecture](docs/ARCHITECTURE.md) 与 [Development](docs/DEVELOPMENT.md)。
+当前源码为 0.2.0，使用 [Apache License 2.0](LICENSE)。请在 [Issues](https://github.com/billstar0128-jpg/AutoQuestion/issues) 报告问题，在 [仓库](https://github.com/billstar0128-jpg/AutoQuestion) 提交 PR；安全问题使用私密报告渠道。先阅读 [README](README.md)、[Architecture](docs/ARCHITECTURE.md) 与 [Development](docs/DEVELOPMENT.md)。
 
 在项目根目录，用标准 Windows CPython 创建 `.venv-win`，安装 `requirements-dev.txt`，再设置 `PLAYWRIGHT_BROWSERS_PATH=0` 并安装 Playwright Chromium。完整命令和测试分类见 [Development](docs/DEVELOPMENT.md)。PR 前顺序运行 pytest、unittest、compileall、pip check 和 release audit；本机有交互桌面时另外运行可见窗口 smoke。
 

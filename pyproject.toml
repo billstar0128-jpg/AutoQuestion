@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "autoquestion"
-description = "Windows local practice-question assistant with explicit DOM and Vision input"
+description = "Windows question assistant with optional browser DOM and foreground Vision input"
 readme = "README.md"
 requires-python = ">=3.10"
 dynamic = ["version", "dependencies"]

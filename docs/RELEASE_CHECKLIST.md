@@ -1,4 +1,30 @@
-# Release Checklist — 0.1.0rc1
+# Release Checklist — 0.2.0 / M15
+
+The owner explicitly authorized Stable publication without waiting for GUI acceptance. Historical M14 results below do not substitute for M15 automatic evidence.
+
+## Mandatory automatic gates
+
+- [x] Local pytest / unittest / compileall / pip check / Doctor / version checks
+- [x] Browser bridge, extension, AUTO router and prior regression suites
+- [x] Candidate secret / UTF-8 / documentation link audit
+- [ ] Tracked, staged and complete Git history audit
+- [ ] Main push and real GitHub Actions green
+- [ ] Fresh GitHub clone, new venv, install/version/Offline Demo and extension inventory
+- [ ] Remote secret and GitHub page audit; Description updated
+- [ ] v0.2.0 Stable source-only tag / Release; old v0.1.0rc1 unchanged
+
+## Non-blocking manual follow-up
+
+Chrome / Edge installation, GUI site grants, physical F8, browser → WPS → browser, extension-disabled fallback and real Canvas Vision:
+**Not performed before v0.2.0 release by explicit user decision.**
+Post-release manual validation recommended; these are not release blockers and are not marked passed.
+Owned-window automated managed Demo / Canvas / focus smoke passed separately (1 test, 1.732 s).
+
+Evidence: [M15 validation](VALIDATION_M15.md). Optional steps: [M15 manual follow-up](MANUAL_ACCEPTANCE_M15.md).
+Repository Description target:
+Put a question on screen, press F8, get an answer. Browser DOM when possible, Vision everywhere else.
+
+## Historical M14 — 0.1.0rc1
 
 M14 publication checks。用户已明确授权公开 main push 和 v0.1.0rc1 Pre-release；Stable 不在本轮范围内。历史自动结果见 [Validation](VALIDATION_M13.md)，人工步骤见 [M13 Acceptance](MANUAL_ACCEPTANCE_M13.md)。下面未完成项不能靠推断勾选。
 

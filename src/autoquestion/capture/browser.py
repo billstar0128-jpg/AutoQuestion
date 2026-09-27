@@ -52,7 +52,7 @@ def question_from_dom(data: dict) -> Question:
             kind = QuestionType.MULTIPLE_CHOICE
         elif data["kind"] == "radio":
             kind = QuestionType.SINGLE_CHOICE
-            if len(options) == 2 and words in ({"正确", "错误"}, {"对", "错"}, {"是", "否"}, {"true", "false"}):
+            if len(options) == 2 and words in ({"正确", "错误"}, {"对", "错"}, {"是", "否"}, {"true", "false"}, {"yes", "no"}):
                 kind = QuestionType.TRUE_FALSE
         else:
             raise BrowserExtractionError("不支持当前题目控件类型。")

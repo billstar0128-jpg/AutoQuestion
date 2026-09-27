@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "AutoQuestion Browser DOM",
+  "version": "0.2.0",
+  "description": "Read the foreground question only when AutoQuestion requests it with F8.",
+  "minimum_chrome_version": "116",
+  "permissions": ["activeTab", "scripting"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": {"service_worker": "worker.js"},
+  "action": {"default_popup": "popup.html"},
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; connect-src ws://127.0.0.1:37841"
+  }
+}

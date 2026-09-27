@@ -115,6 +115,9 @@ class BrowserSession:
             return await self._adapter.extract_question()
         return self._call(extract)
 
+    def owns_target(self, target: WindowTarget) -> bool:
+        return bool(self._process_id and target.process_id == self._process_id)
+
     def extract_for_target(self, target: WindowTarget, verify: Callable[[], None]) -> Question:
         """AUTO 专用：PID、唯一窗口/页面及焦点一致才读 DOM。"""
         if not self._process_id or target.process_id != self._process_id:

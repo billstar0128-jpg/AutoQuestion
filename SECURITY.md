@@ -1,6 +1,8 @@
 # Security policy
 
-0.1.0rc1 是公开 Release Candidate，尚未作为 stable 发布。请使用已启用的 [GitHub 私密漏洞报告](https://github.com/billstar0128-jpg/AutoQuestion/security/advisories/new)。
+当前正式源码版本为 0.2.0；历史 v0.1.0rc1 保留为 Pre-release。请使用已启用的 [GitHub 私密漏洞报告](https://github.com/billstar0128-jpg/AutoQuestion/security/advisories/new)。
+
+0.2.0 新增扩展与本机 bridge 信任边界：Origin / Host / 路径检查、内存配对码、Windows TCP 所有者与进程匹配、消息大小和协议校验。只有本次授权的扩展会话能响应取题；网站不能直接调用桥接提取。不要分享配对码；可关闭程序/断开扩展撤销会话。localhost 不等于所有本地软件可信，已控制当前用户或浏览器的恶意软件不在此隔离能力范围内。
 
 API Key 暴露、凭据处理缺陷、意外截图、意外 DOM 访问、任意文件访问、代码执行风险和日志泄密都属于安全问题。发现后先停止受影响流程，记录版本、复现步骤和经过脱敏的错误类别，通过上述私密渠道报告；不要把漏洞利用中的秘密放进 public issue。
 

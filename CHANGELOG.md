@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.2.0
+
+### Added
+
+- Browser DOM support for normal Chrome / Edge pages through an optional MV3 extension.
+- Localhost Browser Bridge, memory-only pairing and foreground target classification.
+- DOM → Vision fallback, synthetic fixtures, bridge/extension/router tests and installation documentation.
+
+### Changed
+
+- AUTO prefers DOM for supported browser pages; desktop applications use Vision directly.
+- Strict DOM uses the foreground target; --open-demo explicitly opens the managed Playwright Demo.
+- Existing config_version=1 settings and API credentials remain compatible; websockets 15 is the only new runtime dependency.
+
+### Security / Privacy
+
+- F8-triggered DOM access, localhost-only bridge, minimal permissions and per-site grants.
+- No cookie/password/input-value/history collection or personal browser profile takeover.
+- Native process matching and browser window/tab checks; provider errors never trigger an extra image request.
+
+### Limitations
+
+- Canvas/image-heavy pages, complex iframe/Shadow DOM and ambiguous controls may fall back to Vision.
+- fill_blank / short_answer remain unsupported; no automatic clicking, submission or next question.
+- Chrome / Edge support is implemented and covered by automated/local fixture tests. Real GUI acceptance was skipped before release by explicit user decision and remains a non-blocking follow-up.
+
 ## 0.1.0rc1 — Public Release Candidate (Pre-release)
 
 ### Added

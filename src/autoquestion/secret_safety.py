@@ -43,7 +43,7 @@ def inspect_text(text: str, name: str, *, example=False) -> list[Finding]:
 def scan_project(root: Path) -> list[Finding]:
     # 明确白名单；不遍历 .env、legacy_main.py、profile、日志或虚拟环境。
     paths = [root / name for name in ('main.py', 'README.md', '.env.example', 'requirements.txt', 'requirements-dev.txt')]
-    for directory in ('src', 'tests', 'examples'):
+    for directory in ('src', 'tests', 'examples', 'extension'):
         base = root / directory
         if base.is_dir() and not base.is_symlink():
             paths.extend(path for path in base.rglob('*')

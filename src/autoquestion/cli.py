@@ -16,7 +16,11 @@ def parse_args(argv=None):
     commands.add_argument('--show-config', action='store_true', help='显示配置，不读取或显示凭据值')
     commands.add_argument('--reset-config', action='store_true', help='确认后删除用户配置；凭据删除单独确认')
     commands.add_argument('--open-demo', action='store_true', help='仅本次打开受管理 Demo；不修改输入模式')
-    return parser.parse_args(argv)
+    parser.add_argument('--pair-browser', action='store_true', help='本次启动显示扩展配对窗口；配对码只在内存')
+    args = parser.parse_args(argv)
+    if args.pair_browser and any((args.doctor, args.version, args.show_config, args.reset_config)):
+        parser.error('--pair-browser 仅用于启动程序，不能组合只读或重置命令。')
+    return args
 
 
 def main(argv=None):

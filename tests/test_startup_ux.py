@@ -69,7 +69,8 @@ class StartupUXTests(unittest.TestCase):
             code, output = self.run_app(Config(input_mode='auto', llm_provider='openai'), listen=self.trigger)
             spawn.assert_not_called()
         self.assertEqual(code, 0)
-        self.assertIn('Fallback: VISION', output)
+        self.assertIn('Input: VISION (desktop target)', output)
+        self.assertNotIn('Fallback:', output)
         self.capture.capture.assert_called_once_with(self.capture.snapshot_target.return_value)
         self.provider.analyze_image.assert_called_once()
 
@@ -120,14 +121,26 @@ class StartupUXTests(unittest.TestCase):
         self.assertFalse(browser._thread.is_alive())
         self.assertFalse(browser._browser.is_connected())
 
-    def test_dom_automatically_opens_and_vision_explicit_demo_never_extracts(self):
-        for mode, flags in (('dom', ()), ('dom', ('--open-demo',)), ('vision', ('--open-demo',))):
+    def test_dom_requires_explicit_demo_and_vision_never_extracts(self):
+        with patch('autoquestion.browser_session.BrowserSession') as factory:
+            code, output = self.run_app(Config(input_mode='dom'), listen=self.trigger)
+            factory.assert_not_called()
+        self.assertEqual(code, 0)
+        self.assertIn('Status: ERROR', output)
+        self.capture.capture.assert_not_called()
+        for mode, flags in (('dom', ('--open-demo',)), ('vision', ('--open-demo',))):
             with self.subTest(mode=mode, flags=flags):
                 browser = BrowserSession(headless=True)
                 self.addCleanup(browser.close)
+                def listen(runner):
+                    self.capture.snapshot_target.return_value = WindowTarget(123, browser._process_id, 0, 0, 900, 700)
+                    self.trigger(runner)
                 with patch('autoquestion.browser_session.BrowserSession', return_value=browser), \
-                     patch.object(browser, 'extract_for_target', side_effect=AssertionError('No AUTO route')):
-                    code, output = self.run_app(Config(input_mode=mode), flags, self.trigger)
+                     patch('autoquestion.browser_session.WindowsWindowAPI') as windows, \
+                     patch.object(browser, 'extract_for_target', wraps=browser.extract_for_target) as extract:
+                    windows.return_value.browser_windows.return_value = [123]
+                    code, output = self.run_app(Config(input_mode=mode), flags, listen)
+                    self.assertEqual(extract.call_count, 1 if mode == 'dom' else 0)
                 self.assertEqual(code, 0)
                 self.assertTrue(browser._closed)
                 self.assertIn('答案：A', output)

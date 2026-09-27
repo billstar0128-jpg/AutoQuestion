@@ -31,6 +31,8 @@ class WindowTarget:
     right: int
     bottom: int
     title: str = field(default="", repr=False, compare=False)
+    executable: str = field(default="", repr=False)
+    process_started: int = field(default=0, repr=False)
 
     @property
     def region(self) -> dict[str, int]:
@@ -110,7 +112,14 @@ class WindowsWindowAPI:
             raise CaptureError("前台窗口没有有效截图区域。")
         title = ctypes.create_unicode_buffer(4096)
         self.user32.GetWindowTextW(hwnd, title, len(title))
-        return WindowTarget(hwnd, process_id.value, rect.left, rect.top, rect.right, rect.bottom, title.value)
+        from ..browser_identity import process_identity
+        try:
+            identity = process_identity(process_id.value)
+            executable, started = identity.image, identity.born
+        except OSError:
+            executable, started = '', 0
+        return WindowTarget(hwnd, process_id.value, rect.left, rect.top, rect.right, rect.bottom,
+                            title.value, executable, started)
 
     def browser_windows(self, process_id: int) -> list[int]:
         """只返回指定自有进程的可见 Chromium 顶层窗口，不读取其他窗口标题。"""
@@ -138,6 +147,7 @@ class ScreenCapture:
             raise CaptureError("截图最长边必须为 1024～4096 像素。")
         self.max_edge = max_edge
         self._windows = WindowsWindowAPI()
+        self.target_guard = None
 
     def snapshot_target(self) -> WindowTarget:
         """由热键任务准备步骤调用，先记录目标，再允许任何状态日志。"""
@@ -154,6 +164,8 @@ class ScreenCapture:
             raise CaptureError("Unable to capture foreground window. 无法读取窗口信息。") from None
 
     def _verify_target(self, target: WindowTarget) -> None:
+        if self.target_guard is not None:
+            self.target_guard()
         if self._windows.foreground() != target.hwnd or self._windows.describe(target.hwnd) != target:
             raise CaptureError("目标窗口已切换、移动或关闭，已取消本次截图，请重新按 F8。")
 

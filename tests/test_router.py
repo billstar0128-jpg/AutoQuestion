@@ -30,6 +30,7 @@ class RouterTests(unittest.TestCase):
         self.capture.snapshot_target.return_value = self.target
         self.capture.capture.return_value = synthetic_image()
         self.browser = Mock(spec=BrowserSession)
+        self.browser.owns_target.return_value = True
         self.question = demo_question().model_copy(update={'source_type': SourceType.DOM})
         self.browser.extract_for_target.return_value = self.question
         self.provider = Mock(spec=BaseLLMProvider)
@@ -70,8 +71,9 @@ class RouterTests(unittest.TestCase):
         self.provider.answer_question.assert_called_once_with(self.question)
 
     def test_non_browser_never_reads_background_dom(self):
-        self.browser.extract_for_target.side_effect = BrowserExtractionError('不是受管理浏览器')
+        self.browser.owns_target.return_value = False
         self.assertIn('Input: VISION', self.run_job())
+        self.browser.extract_for_target.assert_not_called()
         self.capture.capture.assert_called_once_with(self.target)
         self.provider.analyze_image.assert_called_once()
         self.provider.answer_question.assert_not_called()

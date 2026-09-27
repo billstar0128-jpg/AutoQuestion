@@ -124,7 +124,7 @@ class DOMWorkflowTests(unittest.TestCase):
              patch('autoquestion.browser_session.BrowserSession', return_value=browser), \
              patch('autoquestion.hotkeys.WindowsHotkeys') as hotkeys:
             hotkeys.return_value.__enter__.return_value.listen.side_effect = listen
-            self.assertEqual(main([]), 0)
+            self.assertEqual(main(['--open-demo']), 0)
         self.assertTrue(browser._closed)
 
     def test_default_mode_retained_and_dom_explicit(self):

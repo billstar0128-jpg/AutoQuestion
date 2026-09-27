@@ -293,6 +293,7 @@ class ChoiceWorkflowTests(unittest.TestCase):
             for kind, labeled in (('multiple_choice', True), ('multiple_choice', False), ('true_false', False)):
                 with self.subTest(auto=auto, kind=kind, labeled=labeled):
                     capture, provider = Mock(spec=ScreenCapture), Mock()
+                    capture.snapshot_target.return_value = WindowTarget(123, 456, 0, 0, 900, 700, executable='chrome.exe')
                     capture.capture.return_value = synthetic_image()
                     provider.supports_vision = True
                     provider.analyze_image.return_value = VisionAnalysisResult(

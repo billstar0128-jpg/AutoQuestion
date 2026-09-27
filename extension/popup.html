@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><title>AutoQuestion</title>
+<body>
+  <h2>AutoQuestion Browser DOM</h2>
+  <p id="status" role="status">检查连接…</p>
+  <p>运行 main.py --pair-browser，在此输入本次配对码。配对码仅保存在内存。</p>
+  <label>本次配对码 <input id="token" type="password" maxlength="32" autocomplete="off"></label>
+  <button id="pair" type="button">连接</button>
+  <p>点开扩展已临时授权当前标签。可选：允许当前站点，方便后续 F8。</p>
+  <button id="grant" type="button">允许当前站点</button>
+  <button id="disconnect" type="button">断开并忘记配对码</button>
+  <p>关掉弹窗，保持题目在前台，再按 F8。扩展不会选择或提交答案。</p>
+  <script src="popup.js"></script>
+</body></html>

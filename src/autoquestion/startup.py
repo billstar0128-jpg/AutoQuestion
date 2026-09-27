@@ -96,7 +96,7 @@ def resolve_startup(args, *, store=None, backend=None, console=None, environ=Non
     if configured_now and effective.input_mode in {'auto', 'vision'} and not open_demo:
         open_demo = console.yes('Setup complete. Open the local demo quiz now?', False)
     elif configured_now and effective.input_mode == 'dom':
-        console.output('DOM mode opens the managed local Demo automatically.')
+        console.output('DOM mode uses the foreground browser. Use --open-demo for the managed local Demo.')
     return replace(build_runtime(values, saved, session_secret, backend, console), open_demo=open_demo)
 
 
@@ -154,6 +154,7 @@ def show_config(args, *, store=None, backend=None, console=None, environ=None):
     console.output(f'Provider: {display}')
     console.output(f'Protocol: {PROTOCOLS[config.llm_provider]}')
     console.output(f'Input mode: {config.input_mode.upper()}')
+    console.output('Browser DOM Bridge: 127.0.0.1:37841; protocol 1; runtime pairing only (no stored secret)')
     if config.llm_provider == 'openai':
         llm = load_llm_config(values | {'LLM_API_KEY': 'test-api-key'})
         console.output(f'Base URL: {llm.base_url}')

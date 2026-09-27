@@ -9,8 +9,11 @@
 - Key 不进入普通 JSON、日志或对象 repr。Windows 原生安全存储只允许 `AutoQuestion/<profile>/<reference>` 命名空间；session-only 不落盘。
 - Setup 输入遮罩/隐藏，无法安全隐藏则拒绝输入；确认保存前不写配置、不启动热键/浏览器。配置与凭据分开写，失败尽量回滚新引用。
 - 窗口目标在 F8 时固定；PID/HWND/边界变化取消捕获，拒绝全屏兜底。32M 原始像素、最长边限制和 8 MiB PNG 上限控制内存。
-- DOM 不读 Cookie、LocalStorage、SessionStorage、password value、认证头或 whole HTML。仅在自有 Demo 会话执行只读语义提取。
-- 本地 Demo 阻止外部页面请求，禁止下载和 service worker；没有个人 Chrome 接管、remote-debugging 用户连接或浏览器扩展。
+- DOM 不读 Cookie、LocalStorage、SessionStorage、输入值、认证头或 whole HTML。只在自有 Demo 或已配对且授权站点的扩展会话执行只读语义提取。
+- 本地 Demo 阻止外部请求、下载和 service worker。普通 Chrome/Edge 用 MV3 扩展，不接管个人 profile 或个人调试端口。
+- Bridge 仅绑定 127.0.0.1，拒绝网页 Origin、错误 Host/路径、无配对码/错误协议、超大或畸形消息。配对码只在内存，用常量时间比较，不进入 URL、日志、配置或系统凭据。
+- TCP tuple 的真实 PID/映像/创建时间与 F8 目标核对；浏览器内另核对 focused window、active tab 和 epoch，不信任客户端自报浏览器名。目标变化取消；配对浏览器截图前后确认原标签。
+- 扩展默认不获全站读取权；activeTab 与用户选择的站点权限控制注入。无后台页面扫描、cookies/history/storage/tabs/debugger 权限，也无网页 externally_connectable 入口。
 - Provider 的原始异常、响应体、请求头和 transport debug 日志不透出；协议校验失败不给伪造修正答案。
 - 页面/图片里的指令被当作题目数据；程序没有执行模型返回命令、点击、文件访问或提交动作的通道。
 
