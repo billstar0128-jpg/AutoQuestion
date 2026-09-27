@@ -7,11 +7,11 @@ The owner explicitly authorized Stable publication without waiting for GUI accep
 - [x] Local pytest / unittest / compileall / pip check / Doctor / version checks
 - [x] Browser bridge, extension, AUTO router and prior regression suites
 - [x] Candidate secret / UTF-8 / documentation link audit
-- [ ] Tracked, staged and complete Git history audit
-- [ ] Main push and real GitHub Actions green
-- [ ] Fresh GitHub clone, new venv, install/version/Offline Demo and extension inventory
-- [ ] Remote secret and GitHub page audit; Description updated
-- [ ] v0.2.0 Stable source-only tag / Release; old v0.1.0rc1 unchanged
+- [x] Tracked, staged and complete Git history audit
+- [x] Main push and real GitHub Actions green
+- [x] Fresh GitHub clone, new venv, install/version/Offline Demo and extension inventory
+- [x] Remote secret and GitHub page audit; Description updated
+- [x] v0.2.0 Stable source-only tag / Release; old v0.1.0rc1 unchanged
 
 ## Non-blocking manual follow-up
 
@@ -92,4 +92,4 @@ M13 historical checks below remain recorded. M14 Phase A passed, including the u
 M14 publication gates complete. License: Apache-2.0. The historical user-manual checklist above remains attributed to the user's acceptance, not agent reruns.
 Repository: https://github.com/billstar0128-jpg/AutoQuestion
 Release: [v0.1.0rc1 Pre-release](https://github.com/billstar0128-jpg/AutoQuestion/releases/tag/v0.1.0rc1).
-CI and publication results are recorded in the M14 validation document. Stable remains unpublished.
+CI and publication results are recorded in the M14 validation document. Stable was unpublished at the end of M14; M15 publication is recorded above.

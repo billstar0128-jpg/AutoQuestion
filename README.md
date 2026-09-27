@@ -26,7 +26,7 @@
 
 ## Quick Start
 
-准备标准 **Windows CPython**，不要使用 MSYS2/MinGW Python。最低版本是 Python 3.10；本机使用 **CPython 3.14.6**。历史 0.1.0rc1 的 Windows GitHub CI 已通过 **3.10.11 / 3.12.10 / 3.14.7**；本轮 0.2.0 的远端 CI 尚待发布流程验证。CI 跳过交互桌面测试，物理窗口验收另在 Windows 本机完成。
+准备标准 **Windows CPython**，不要使用 MSYS2/MinGW Python。最低版本是 Python 3.10；本机使用 **CPython 3.14.6**。历史 0.1.0rc1 的 Windows GitHub CI 已通过 **3.10.11 / 3.12.10 / 3.14.7**；本轮 0.2.0 的 [Windows GitHub CI](https://github.com/billstar0128-jpg/AutoQuestion/actions/runs/36295257899) 已通过 Python **3.10 / 3.12 / 3.14**。CI 跳过交互桌面测试；受管理窗口自动 smoke 已在本机通过，Chrome / Edge 人工 GUI 验收由用户明确决定留作发布后非阻断跟进。
 
 从 [GitHub 仓库](https://github.com/billstar0128-jpg/AutoQuestion) 取得完整源码，在项目根目录打开 PowerShell。
 
@@ -350,7 +350,7 @@ Key 不进入普通 config、日志、repr 或仓库。不要上传真实 `.env`
 
 物理桌面另测 `.\.venv-win\Scripts\python.exe -X utf8 tests/smoke_browser_window.py -v`。关闭旧实例，测试窗口需获得前台；测试不会夺取其他用户窗口或读取真实屏幕像素。CI 不运行此可见 smoke；本地完整测试默认保留原生热键测试。
 
-[Development](docs/DEVELOPMENT.md) · [Technical Notes](docs/TECHNICAL_NOTES.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) · [Release Notes Draft](docs/RELEASE_NOTES_0.2.0.md)
+[Development](docs/DEVELOPMENT.md) · [Technical Notes](docs/TECHNICAL_NOTES.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) · [Release Notes](docs/RELEASE_NOTES_0.2.0.md)
 
 ## License / publication state
 
