@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- 本机网页工作台：配置模型、启动／停止、查看真实题目与答案、内存记录和扩展配对。
+- AutoQuestion.pyw 双击入口及图形化首次依赖准备，日常使用不需要 PowerShell。
+- DeepSeek / Kimi / GLM / OpenAI 的 URL、Model ID 与图片能力示例；网页与控制台向导共用，不自动选择模型或启用图片。
+- GitHub Pages 静态 UI 交互预览；禁用 API Key 输入，不读取屏幕或调用模型。
+
+### Security / Privacy
+
+- 本机控制台使用随机端口、会话令牌、Host / Origin 校验与严格 CSP；安全凭据和既有 F8 路由复用原实现。
+- 已保存 Key 不回传浏览器，截图不落盘，题目记录只在内存中保留，退出清空。
+- v0.2.0 标签与正式 Release 保持原样，新增界面通过 main 源码获取。
+
 ## 0.2.0
 
 ### Added

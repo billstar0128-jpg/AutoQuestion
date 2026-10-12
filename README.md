@@ -14,6 +14,8 @@
 
 当前版本为 **0.2.0**：安装可选 AutoQuestion Browser Extension 后，受支持的 Chrome / Edge 页面在 AUTO 下优先 DOM，提取不可用时回退 Vision。WPS、记事本、PDF 阅读器及其他桌面应用直接 Vision。上面的介绍保留首次公开 RC 的背景。
 
+**日常使用现在可以双击 [AutoQuestion.pyw](AutoQuestion.pyw) 打开网页工作台**，在界面完成配置、启动／停止和查看答案。第一次会以图形窗口询问是否安装运行依赖。需要标准 Windows Python；后续不用在 PowerShell 里启动。详见 [本机网页工作台](docs/WEB_UI.md)。[在线 UI 预览](https://billstar0128-jpg.github.io/AutoQuestion/) 只展示界面与配置示例，实际答题仍在你的 Windows 电脑运行。
+
 ## What it does
 
 用于自建题库、本地 Demo、非计分练习、调查问卷和获得授权的学习场景。模型可能答错，结构校验不能代替人工核对。
@@ -245,6 +247,8 @@ python -m venv .venv-win
 
 
 ### First-run Setup
+
+双击启动的网页工作台在没有配置时直接进入“模型与配置”。字段旁提供服务商根地址、Model ID 示例和图片能力说明；点击模型示例即可填入，Key 通过安全凭据或仅本次模式保存。原有命令行向导也会在提问前显示相同示例。以 DeepSeek 为例，Base URL 填 `https://api.deepseek.com`，模型可以按账户选 `deepseek-flash` 或 `deepseek-v4-pro` 等；不要加 `/chat/completions`。模型列表与图片能力见 [配置示例与官方来源](docs/WEB_UI.md#第一次配置示例)。
 
 没有有效保存配置或完整显式配置时，程序进入向导。以 DeepSeek 为例：选择 Provider → 确认 API root → 填账户可调用的 Model ID → 确认这个模型的图片能力 → 选择 AUTO → 安全输入 Key → 选择 Windows Credential Manager 或 session-only → 确认保存。
 

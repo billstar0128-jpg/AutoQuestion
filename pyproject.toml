@@ -26,3 +26,4 @@ namespaces = false
 
 [tool.setuptools.package-data]
 "autoquestion.capture" = ["dom_extract.js"]
+"autoquestion" = ["web/*.html", "web/*.js", "web/*.css"]

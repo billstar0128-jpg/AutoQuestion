@@ -1,5 +1,7 @@
 # Security policy
 
+本机网页控制台使用仅 loopback 的随机端口与本次随机会话令牌。API 校验 Host 和令牌，写请求额外要求同源 Origin、JSON 格式及大小限制；无 CORS 放行或远程登录。资源采用严格 CSP；题目/模型文本按纯文本渲染。Key 仍由 Windows 凭据管理器或进程内存保存，不回传已保存值。有效本机用户隔离不能替代操作系统对恶意本机进程的防护。详见 [网页工作台边界](docs/WEB_UI.md#本机服务边界)。
+
 当前正式源码版本为 0.2.0；历史 v0.1.0rc1 保留为 Pre-release。请使用已启用的 [GitHub 私密漏洞报告](https://github.com/billstar0128-jpg/AutoQuestion/security/advisories/new)。
 
 0.2.0 新增扩展与本机 bridge 信任边界：Origin / Host / 路径检查、内存配对码、Windows TCP 所有者与进程匹配、消息大小和协议校验。只有本次授权的扩展会话能响应取题；网站不能直接调用桥接提取。不要分享配对码；可关闭程序/断开扩展撤销会话。localhost 不等于所有本地软件可信，已控制当前用户或浏览器的恶意软件不在此隔离能力范围内。

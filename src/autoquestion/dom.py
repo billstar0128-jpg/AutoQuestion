@@ -46,4 +46,6 @@ def answer_dom_question(config: Config, question: Question, stop: threading.Even
     answer = provider.answer_question(question)
     answer = validate_answer_against_question(question, answer)
     if not stop.is_set():
-        LOGGER.info("%s\nConfidence:\n%.0f%%", format_answer(answer), answer.confidence * 100)
+        LOGGER.info("%s\nConfidence:\n%.0f%%", format_answer(answer), answer.confidence * 100,
+                    extra={'question_result': question.model_dump(mode='json'),
+                           'answer_result': answer.model_dump(mode='json')})

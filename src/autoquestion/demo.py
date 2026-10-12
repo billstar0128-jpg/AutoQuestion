@@ -25,5 +25,7 @@ def make_demo_callback(config: Config) -> Callable[[threading.Event], None]:
         validate_answer_against_question(question, answer)
         if not stop.is_set():
             LOGGER.info("Question:\n%s\n%s\nConfidence:\n%.0f%%",
-                        question.question_text, format_answer(answer), answer.confidence * 100)
+                        question.question_text, format_answer(answer), answer.confidence * 100,
+                        extra={'question_result': question.model_dump(mode='json'),
+                               'answer_result': answer.model_dump(mode='json')})
     return callback

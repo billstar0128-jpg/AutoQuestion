@@ -16,15 +16,21 @@ def parse_args(argv=None):
     commands.add_argument('--show-config', action='store_true', help='显示配置，不读取或显示凭据值')
     commands.add_argument('--reset-config', action='store_true', help='确认后删除用户配置；凭据删除单独确认')
     commands.add_argument('--open-demo', action='store_true', help='仅本次打开受管理 Demo；不修改输入模式')
+    commands.add_argument('--ui', action='store_true', help='打开本机网页控制台，在界面完成配置与启动')
     parser.add_argument('--pair-browser', action='store_true', help='本次启动显示扩展配对窗口；配对码只在内存')
     args = parser.parse_args(argv)
-    if args.pair_browser and any((args.doctor, args.version, args.show_config, args.reset_config)):
-        parser.error('--pair-browser 仅用于启动程序，不能组合只读或重置命令。')
+    if args.pair_browser and any((args.doctor, args.version, args.show_config, args.reset_config, args.ui)):
+        parser.error('--pair-browser 仅用于命令行启动；网页控制台使用界面的配对按钮。')
+    if args.ui and args.env_file is not None:
+        parser.error('--ui 使用界面保存的配置，不接受 --env-file；命令行入口仍支持该选项。')
     return args
 
 
 def main(argv=None):
     args = parse_args(argv)
+    if args.ui:
+        from .web_ui import main as open_ui
+        return open_ui()
     if args.version:
         print(f'AutoQuestion {__version__}')
         return 0

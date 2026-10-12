@@ -1,7 +1,7 @@
 """User-facing presets, distinct from implemented wire protocols.
 
-API roots checked against vendor quickstarts; model IDs deliberately require
-user input until verified with this application's request/answer contract.
+API roots and illustrative model IDs checked against vendor docs (2026-10-13).
+Examples do not select a model or certify real-provider compatibility.
 """
 from dataclasses import dataclass
 import re
@@ -24,6 +24,9 @@ class ProviderPreset:
     allow_custom_base_url: bool = True
     allow_custom_model: bool = True
     notes: str = '请填写账户可用的 Model ID，并确认该模型是否支持图片；本项目未验证所有模型。'
+    example_models: tuple[str, ...] = ()
+    vision_notes: str = '图片能力取决于具体模型；以服务商文档和账户权限为准。'
+    docs_url: str = ''
 
     def __post_init__(self):
         if (not re.fullmatch(r'[a-z][a-z0-9_]{0,63}', self.id)
@@ -50,14 +53,33 @@ def build_registry(presets):
 
 
 PRESETS = build_registry((
-    ProviderPreset('deepseek', 'DeepSeek', 'openai', 'https://api.deepseek.com'),
-    ProviderPreset('kimi', 'Kimi / Moonshot', 'openai', 'https://api.moonshot.cn/v1'),
-    ProviderPreset('zhipu', 'Zhipu / GLM', 'openai', 'https://open.bigmodel.cn/api/paas/v4/'),
-    ProviderPreset('openai', 'OpenAI / GPT', 'openai', 'https://api.openai.com/v1'),
+    ProviderPreset('deepseek', 'DeepSeek', 'openai', 'https://api.deepseek.com',
+                   example_models=('deepseek-flash', 'deepseek-v4-pro'),
+                   vision_notes='官方文档说明 deepseek-flash 支持图片输入；其他模型请单独确认。',
+                   docs_url='https://api-docs.deepseek.com/'),
+    ProviderPreset('kimi', 'Kimi / Moonshot', 'openai', 'https://api.moonshot.cn/v1',
+                   example_models=('kimi-k3', 'kimi-k2.6'),
+                   vision_notes='官方文档说明 kimi-k3 / kimi-k2.6 支持图片输入；账户可用性需单独确认。',
+                   docs_url='https://platform.kimi.com/docs/get-api-key'),
+    ProviderPreset('zhipu', 'Zhipu / GLM', 'openai', 'https://open.bigmodel.cn/api/paas/v4/',
+                   example_models=('glm-4.6v', 'glm-4.6v-flash'),
+                   vision_notes='GLM 的文本模型与视觉模型不同；示例为视觉系列，勿凭名称给其他模型开启图片能力。',
+                   docs_url='https://docs.bigmodel.cn/api-reference/模型-api/对话补全'),
+    ProviderPreset('openai', 'OpenAI / GPT', 'openai', 'https://api.openai.com/v1',
+                   example_models=('gpt-4.1-mini', 'gpt-4.1-mini-2025-04-14'),
+                   vision_notes='官方文档说明 gpt-4.1-mini 支持图片输入；ChatGPT 订阅与 API 额度分开。',
+                   docs_url='https://developers.openai.com/api/docs/models/gpt-4.1-mini'),
     ProviderPreset('custom_openai_compatible', 'Custom OpenAI-compatible API', 'openai'),
     ProviderPreset('offline_demo', 'Offline Demo', 'fake', allow_custom_base_url=False,
                    allow_custom_model=False, notes='无需 API Key、网络请求或 Chromium runtime。'),
 ))
+
+
+def public_presets():
+    """Non-secret examples shared by console setup, local UI and online preview."""
+    return [dict(id=p.id, name=p.display_name, base_url=p.default_base_url,
+                 models=list(p.example_models), vision_notes=p.vision_notes,
+                 docs_url=p.docs_url, notes=p.notes) for p in PRESETS.values()]
 
 
 def get_preset(identifier):

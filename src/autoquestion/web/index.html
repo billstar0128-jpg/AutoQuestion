@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="AutoQuestion 本机工作台。把题目放到前台，按 F8，查看答案。"
+    />
+    <title>AutoQuestion · 答题工作台</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到主要内容</a>
+    <aside class="sidebar">
+      <a class="brand" href="#workspace" aria-label="AutoQuestion 工作台"
+        ><span class="brand-mark">A<span>·</span></span
+        ><span>AutoQuestion<small>你的屏幕答题助手</small></span></a
+      >
+      <div class="nav-caption">WORKSPACE</div>
+      <nav aria-label="主导航">
+        <button
+          class="nav-link active"
+          data-view="workspace"
+          aria-current="page"
+        >
+          <span class="nav-icon">▦</span>答题工作台
+        </button>
+        <button class="nav-link" data-view="settings">
+          <span class="nav-icon">⚙</span>模型与配置
+        </button>
+        <button class="nav-link" data-view="guide">
+          <span class="nav-icon">▤</span>开始使用
+        </button>
+      </nav>
+      <div class="sidebar-note">
+        <span class="tiny-dot"></span>在你的电脑上运行
+        <p>你的模型，你的 API Key。<br />题目只在你按 F8 后读取。</p>
+      </div>
+      <div class="sidebar-bottom">
+        <a
+          href="https://github.com/billstar0128-jpg/AutoQuestion"
+          target="_blank"
+          rel="noreferrer"
+          >GitHub ↗</a
+        ><span id="version">v0.2.0</span>
+      </div>
+    </aside>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="breadcrumbs">
+          个人工作区 <span>/</span> <strong id="page-label">答题工作台</strong>
+        </div>
+        <div class="topbar-right">
+          <span class="local-badge" id="connection-label"
+            ><span class="tiny-dot"></span>本机连接</span
+          ><button class="avatar" data-view="settings" aria-label="打开配置">
+            AQ
+          </button>
+        </div>
+      </header>
+      <div id="preview-banner" class="preview-banner" hidden>
+        这是公开的交互预览。实际 F8 答题与 API Key 配置在 Windows 本机运行。<a
+          href="https://github.com/billstar0128-jpg/AutoQuestion/archive/refs/heads/main.zip"
+          >下载本机版 ↗</a
+        >
+      </div>
+      <main id="main">
+        <section id="view-workspace" class="view">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">A LITTLE LESS REPETITION.</p>
+              <h1>把时间留给思考。</h1>
+              <p class="muted">题目在屏幕上，F8 一按，答案出来。</p>
+            </div>
+            <span class="status-pill" id="status-pill"
+              ><span class="tiny-dot"></span
+              ><span id="status-text">尚未启动</span></span
+            >
+          </div>
+          <section class="hero-panel">
+            <div class="hero-copy">
+              <span class="hero-kicker">从截图、上传，到一个按键</span>
+              <h2>题目放到前台，<br />剩下交给 <span>F8</span>。</h2>
+              <p>
+                网页优先 DOM，桌面应用使用 Vision。<br />读完这一题，回到
+                READY，等下一题。
+              </p>
+              <div class="hero-actions">
+                <button id="start-button" class="button primary">
+                  启动答题 <span>↗</span></button
+                ><button id="demo-button" class="button subtle">
+                  先试试离线 Demo
+                </button>
+              </div>
+            </div>
+            <div class="hero-art" aria-hidden="true">
+              <div class="orbit orbit-one"></div>
+              <div class="orbit orbit-two"></div>
+              <div class="art-spark">✦</div>
+              <div class="keycap">
+                <span>PRESS</span><strong>F8</strong
+                ><small>less clicks, more focus.</small>
+              </div>
+              <div class="art-note"><span>✓</span> 一次只处理一道题</div>
+            </div>
+          </section>
+          <div class="dashboard-grid">
+            <div class="primary-column">
+              <section class="panel answer-panel">
+                <div class="panel-heading">
+                  <h2>当前题目</h2>
+                  <span class="mini-label" id="result-source">等待输入</span>
+                </div>
+                <div class="flow-strip">
+                  <span id="flow-capture">01 <b>获取题目</b></span
+                  ><i>→</i><span id="flow-analyze">02 <b>分析答案</b></span
+                  ><i>→</i><span id="flow-result">03 <b>完成</b></span>
+                </div>
+                <div id="empty-result" class="empty-result">
+                  <div class="empty-icon"><span>?</span><small>↵</small></div>
+                  <h3>下一道题，等你按下 F8</h3>
+                  <p>
+                    启动后，把题目窗口放到前台。<br />答案会显示在这里，不需要再截图上传。
+                  </p>
+                  <span class="empty-caption">单选 · 多选 · 判断题</span>
+                </div>
+                <div id="answer-result" class="answer-result" hidden>
+                  <h3 id="question-text"></h3>
+                  <div id="question-options" class="question-options"></div>
+                  <div class="answer-block">
+                    <span>参考答案</span><strong id="answer-text"></strong>
+                    <p id="answer-reason"></p>
+                    <small id="answer-confidence"></small>
+                  </div>
+                </div>
+                <div
+                  id="runtime-error"
+                  class="message error"
+                  role="alert"
+                  hidden
+                ></div>
+                <footer class="panel-footer">
+                  <span
+                    ><span class="tiny-dot"></span
+                    >答案仅作参考，请核对题意</span
+                  ><button id="clear-button" class="text-button">
+                    清空记录
+                  </button>
+                </footer>
+              </section>
+              <section class="panel recent-panel">
+                <div class="panel-heading">
+                  <h2>
+                    本次记录
+                    <span id="history-count" class="count-badge">0</span>
+                  </h2>
+                  <span class="mini-label">只在内存中保留</span>
+                </div>
+                <div id="history-list" class="history-list">
+                  <p class="muted">完成的题目会出现在这里，退出后清空。</p>
+                </div>
+              </section>
+            </div>
+            <div class="secondary-column">
+              <section class="panel configuration-panel">
+                <div class="panel-heading">
+                  <h2>当前配置</h2>
+                  <button class="text-button" data-view="settings">
+                    调整 ↗
+                  </button>
+                </div>
+                <div class="provider-avatar" id="provider-initial">D</div>
+                <h3 id="provider-name">先连接你的模型</h3>
+                <p class="provider-model" id="provider-model">
+                  也可以先体验离线 Demo
+                </p>
+                <dl class="config-stats">
+                  <div>
+                    <dt>输入方式</dt>
+                    <dd id="input-mode">AUTO</dd>
+                  </div>
+                  <div>
+                    <dt>图片输入</dt>
+                    <dd id="vision-capability">待配置</dd>
+                  </div>
+                  <div>
+                    <dt>API Key</dt>
+                    <dd id="key-status">待配置</dd>
+                  </div>
+                </dl>
+                <div class="mode-note">
+                  AUTO 会按前台窗口选择输入方式。DOM 不可用时，图片模型负责
+                  Vision 回退。
+                </div>
+              </section>
+              <section class="shortcut-panel">
+                <div class="panel-heading">
+                  <h2>两个按键，就够了</h2>
+                  <span>⌨</span>
+                </div>
+                <div class="shortcut">
+                  <kbd>F8</kbd><span>读取前台题目</span>
+                </div>
+                <div class="shortcut">
+                  <kbd>ESC</kbd><span>停止本次答题服务</span>
+                </div>
+                <p>控制台仍然保留，可随时重新启动。</p>
+              </section>
+              <section class="panel browser-panel">
+                <div class="panel-heading">
+                  <h2>浏览器 DOM</h2>
+                  <span class="mini-label">可选</span>
+                </div>
+                <p>Chrome / Edge 配对扩展后，可直接读取题干和选项。</p>
+                <button id="pair-button" class="button outline">
+                  获取本次配对码 ↗
+                </button>
+                <div id="pair-result" hidden>
+                  <label for="pair-code">仅用于本次扩展配对</label
+                  ><input id="pair-code" readonly autocomplete="off" /><button
+                    id="hide-pair"
+                    class="text-button"
+                  >
+                    隐藏配对码
+                  </button>
+                </div>
+                <a
+                  class="small-link"
+                  href="https://github.com/billstar0128-jpg/AutoQuestion/blob/main/docs/BROWSER_DOM_SETUP.md"
+                  target="_blank"
+                  rel="noreferrer"
+                  >扩展安装说明 ↗</a
+                >
+              </section>
+            </div>
+          </div>
+        </section>
+        <section id="view-settings" class="view" hidden>
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">MAKE IT YOURS.</p>
+              <h1>连接你习惯的模型。</h1>
+              <p class="muted">首次配置只需几项。之后双击打开，直接开始。</p>
+            </div>
+            <span class="tag">本机设置</span>
+          </div>
+          <div class="settings-grid">
+            <section class="panel settings-panel">
+              <div class="panel-heading">
+                <h2 id="setup-heading">模型配置</h2>
+                <span class="mini-label">01 / 连接服务商</span>
+              </div>
+              <form id="settings-form">
+                <label for="provider">AI 服务商</label
+                ><select id="provider" name="provider_profile"></select>
+                <div id="api-fields">
+                  <label for="base-url"
+                    >API Base URL <span>服务根地址</span></label
+                  ><input
+                    id="base-url"
+                    type="url"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="https://api.deepseek.com"
+                  />
+                  <p class="field-help">
+                    填 API 根地址，不要加
+                    /chat/completions，也不要填聊天网页网址。
+                  </p>
+                  <label for="model">Model ID <span>模型标识</span></label
+                  ><input
+                    id="model"
+                    list="model-options"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="例如 deepseek-flash"
+                  /><datalist id="model-options"></datalist>
+                  <p class="field-help">
+                    可以选择右侧示例，也可以填写账户中实际可用的模型。
+                  </p>
+                  <label for="api-key"
+                    >API Key <span>仅发送给本机程序</span></label
+                  >
+                  <div class="password-field">
+                    <input
+                      id="api-key"
+                      type="password"
+                      autocomplete="off"
+                      spellcheck="false"
+                      placeholder="粘贴服务商提供的 API Key"
+                    /><button
+                      id="toggle-key"
+                      type="button"
+                      aria-label="显示 API Key"
+                      aria-pressed="false"
+                    >
+                      显示
+                    </button>
+                  </div>
+                  <p class="field-help" id="key-help">
+                    Key 不进入普通配置文件、答题记录或 GitHub。
+                  </p>
+                  <div class="form-row">
+                    <div>
+                      <label for="storage">保存方式</label
+                      ><select id="storage">
+                        <option value="stored">Windows 安全凭据保存</option>
+                        <option value="session">仅本次使用</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label for="mode">输入方式</label
+                      ><select id="mode">
+                        <option value="auto">AUTO · 推荐</option>
+                        <option value="vision">Vision · 图片输入</option>
+                        <option value="dom">DOM · 网页结构</option>
+                        <option value="demo">Demo · 固定题目</option>
+                      </select>
+                    </div>
+                  </div>
+                  <label class="checkbox-label"
+                    ><input id="vision" type="checkbox" /><span
+                      >我确认这个模型支持图片输入<small
+                        >桌面 Vision 和 Canvas
+                        回退需要图片能力；不会自动勾选。</small
+                      ></span
+                    ></label
+                  >
+                </div>
+                <div id="offline-note" class="message info" hidden>
+                  离线 Demo 使用预置题目和答案，不调用模型、不截图，也不需要 API
+                  Key。
+                </div>
+                <div
+                  id="save-message"
+                  class="message"
+                  role="status"
+                  hidden
+                ></div>
+                <div class="form-actions">
+                  <span id="settings-lock" class="field-help"
+                    >设置只在本机生效。</span
+                  ><button
+                    id="save-button"
+                    class="button primary"
+                    type="submit"
+                  >
+                    保存配置 <span>→</span>
+                  </button>
+                </div>
+              </form>
+            </section>
+            <aside class="settings-help">
+              <section class="example-panel">
+                <span class="eyebrow">不用猜怎么填</span>
+                <h2 id="example-provider">拿 DeepSeek 举个例子</h2>
+                <p>地址是一项，模型是另一项。</p>
+                <span class="example-label">API Base URL</span>
+                <div class="example-code">
+                  <code id="example-url">https://api.deepseek.com</code
+                  ><button id="use-url" class="text-button" type="button">
+                    填入
+                  </button>
+                </div>
+                <span class="example-label">Model ID 示例 · 点击填入</span>
+                <div id="example-models" class="model-chips"></div>
+                <p id="vision-notes" class="example-note"></p>
+                <a id="provider-docs" target="_blank" rel="noreferrer"
+                  >查看官方模型文档 ↗</a
+                >
+                <p class="checked-note">
+                  示例核对：2026-10-13。模型与权限会变化，以账户和官方文档为准；未代表已进行真实
+                  API 测试。
+                </p>
+              </section>
+              <section class="help-note">
+                <span>↳</span>
+                <div>
+                  <h3>填完以后怎么用？</h3>
+                  <p>
+                    保存 → 启动答题 → 把题目窗口放到前台 →
+                    F8。答案会留在工作台。
+                  </p>
+                </div>
+              </section>
+              <section class="help-note">
+                <span>◇</span>
+                <div>
+                  <h3>不用注册 AutoQuestion 账号</h3>
+                  <p>
+                    配置与凭据在本机。服务商 API
+                    通常单独计费，网页聊天会员不等于 API 额度。
+                  </p>
+                </div>
+              </section>
+            </aside>
+          </div>
+        </section>
+        <section id="view-guide" class="view" hidden>
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">FROM ZERO TO F8.</p>
+              <h1>第一次用？从这里开始。</h1>
+              <p class="muted">一次准备，之后双击就能打开。</p>
+            </div>
+          </div>
+          <div class="guide-grid">
+            <section class="panel guide-steps">
+              <div class="guide-step">
+                <span>01</span>
+                <div>
+                  <h2>下载到 Windows 电脑</h2>
+                  <p>
+                    安装标准 Windows Python 3.10 或更新版本。下载源码 ZIP
+                    并完整解压。
+                  </p>
+                  <a
+                    class="button outline"
+                    href="https://github.com/billstar0128-jpg/AutoQuestion/archive/refs/heads/main.zip"
+                    >下载源码 ZIP ↗</a
+                  >
+                </div>
+              </div>
+              <div class="guide-step">
+                <span>02</span>
+                <div>
+                  <h2>双击 AutoQuestion.pyw</h2>
+                  <p>
+                    第一次使用会提示创建项目环境并安装依赖。确认后等待完成，浏览器自动打开本机工作台。
+                  </p>
+                  <p class="muted">
+                    如果 Windows 没有关联 .pyw，请用 Python Launcher
+                    打开它。后续不需要 PowerShell。
+                  </p>
+                </div>
+              </div>
+              <div class="guide-step">
+                <span>03</span>
+                <div>
+                  <h2>配置模型，启动答题</h2>
+                  <p>
+                    在“模型与配置”按示例填 URL、模型和
+                    Key。需要读桌面截图时，确认模型支持图片输入。
+                  </p>
+                  <button class="button outline" data-view="settings">
+                    打开模型配置 →
+                  </button>
+                </div>
+              </div>
+              <div class="guide-step">
+                <span>04</span>
+                <div>
+                  <h2>题目置前台，按 F8</h2>
+                  <p>
+                    支持单选、多选和判断。不要让工作台自己成为要分析的前台题目。ESC
+                    停止服务，界面可以重新启动。
+                  </p>
+                </div>
+              </div>
+            </section>
+            <aside>
+              <section class="shortcut-panel">
+                <h2>输入方式怎么选？</h2>
+                <dl class="guide-modes">
+                  <dt>AUTO</dt>
+                  <dd>
+                    受支持网页先 DOM，桌面直接 Vision。取题失败时回退 Vision。
+                  </dd>
+                  <dt>DOM</dt>
+                  <dd>只读已配对浏览器或受管理 Demo，失败报错。</dd>
+                  <dt>Vision</dt>
+                  <dd>始终读取前台窗口截图，需要图片模型。</dd>
+                  <dt>离线 Demo</dt>
+                  <dd>预置合成示例，不代表真实模型能力。</dd>
+                </dl>
+              </section>
+              <section class="panel guide-links">
+                <h2>需要更多帮助？</h2>
+                <a
+                  href="https://github.com/billstar0128-jpg/AutoQuestion#quick-start小白版"
+                  target="_blank"
+                  rel="noreferrer"
+                  >详细安装说明 ↗</a
+                ><a
+                  href="https://github.com/billstar0128-jpg/AutoQuestion/blob/main/docs/BROWSER_DOM_SETUP.md"
+                  target="_blank"
+                  rel="noreferrer"
+                  >浏览器扩展说明 ↗</a
+                ><a
+                  href="https://github.com/billstar0128-jpg/AutoQuestion/issues"
+                  target="_blank"
+                  rel="noreferrer"
+                  >反馈问题 ↗</a
+                >
+                <p>
+                  不会替你点击或提交。填空、简答完整求解与 OCR
+                  暂不支持。模型答案请核对。
+                </p>
+              </section>
+            </aside>
+          </div>
+        </section>
+        <footer class="app-footer">
+          <span>AutoQuestion · 开源于 Apache-2.0</span
+          ><button id="exit-button" class="text-button">退出本机程序 ↗</button>
+        </footer>
+      </main>
+    </div>
+    <div id="toast" class="toast" role="status" hidden></div>
+    <noscript>请开启 JavaScript 以使用本机答题工作台。</noscript>
+  </body>
+</html>

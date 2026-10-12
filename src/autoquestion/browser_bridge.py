@@ -186,6 +186,12 @@ class BrowserBridge:
                 session.retired = session.request
                 session.request, session.reply = None, None
 
+    def pairing_code(self):
+        """Explicit local UI action only; never included in status or logs."""
+        if self._closed or self._server is None:
+            raise BrowserExtractionError('Browser DOM Bridge unavailable.')
+        return self._secret
+
     def pair_dialog(self):
         """Explicit local UI only. No secret in console, arguments, files or config."""
         import tkinter as tk

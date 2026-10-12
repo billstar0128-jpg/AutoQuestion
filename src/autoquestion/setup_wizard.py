@@ -175,9 +175,16 @@ def run_setup(store, backend, console, existing=None):
         mode = previous.input_mode if previous else 'auto'
         while True:
             if preset.allow_custom_base_url:
+                console.output('Base URL 示例：' + (preset.default_base_url or 'http://127.0.0.1:8000/v1')
+                               + '；填 API 根地址，不要附加 /chat/completions，也不是聊天网页地址。')
                 base_url = console.validated('API Base URL (Enter keeps suggested value)', validate_base_url, base_url)
             if preset.allow_custom_model:
+                console.output('Model ID 示例：' + (' / '.join(preset.example_models) or '服务商提供的模型标识')
+                               + '；示例不是可用性保证，不会自动替你选择。')
+                if preset.docs_url:
+                    console.output('官方文档：' + preset.docs_url)
                 model = console.validated('Model ID (enter an available model ID)', validate_model_id, model)
+            console.output(preset.vision_notes)
             vision = console.yes('Supports image input for THIS model?', vision)
             modes = ('auto', 'vision', 'dom', 'demo')
             mode = modes[console.choose('Input mode:', ('AUTO (recommended)', 'Vision', 'DOM', 'Demo'), str(modes.index(mode)+1))-1]

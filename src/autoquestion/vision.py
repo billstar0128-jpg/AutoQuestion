@@ -42,7 +42,9 @@ class VisionWorkflow:
             answer = validate_answer_against_question(result.question, result.answer)
             if not stop.is_set():
                 LOGGER.info("Question:\n%s\n%s\nConfidence:\n%.0f%%", result.question.question_text,
-                            format_answer(answer), answer.confidence * 100)
+                            format_answer(answer), answer.confidence * 100,
+                            extra={'question_result': result.question.model_dump(mode='json'),
+                                   'answer_result': answer.model_dump(mode='json')})
         return callback
 
 

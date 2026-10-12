@@ -26,7 +26,7 @@ $env:PLAYWRIGHT_BROWSERS_PATH = '0'
 
 ## CI classification
 
-AUTOQUESTION_CI=1 显式跳过 5 个交互桌面测试：Entrypoint 1、NativeHotkey 2、Reliability native lifecycle 1、Doctor held-hotkey 1。其余单元测试、Mock Win32 Credential ABI、真实 headless Chromium、配置、secret、Router 和 Startup UX 都运行。可见 smoke 不进入 CI，无 WPS、物理 F8、真实 API 或真实凭据写入。
+AUTOQUESTION_CI=1 显式跳过 6 个交互桌面测试：Entrypoint 1、NativeHotkey 2、Reliability native lifecycle 1、Doctor held-hotkey 1、Web UI native lifecycle 1。其余单元测试、Mock Win32 Credential ABI、真实 headless Chromium、网页 UI、配置、secret、Router 和 Startup UX 都运行。可见 smoke 不进入 CI，无 WPS、物理 F8、真实 API 或真实凭据写入。
 
 本机全量回归不要设置此变量。模拟 CI 时设置后运行相同 pytest/unittest，完成后移除。工作流使用临时 APPDATA、只读权限、不需要 API Secret、不上传 artifacts。当前 GitHub Actions 结果见 [M15 validation](VALIDATION_M15.md)，历史结果见 [M14 validation](VALIDATION_M14.md)。
 

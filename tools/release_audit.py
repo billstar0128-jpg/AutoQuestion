@@ -10,11 +10,11 @@ sys.path.insert(0, str(ROOT / 'src'))
 from autoquestion import __version__
 from autoquestion.secret_safety import Finding, inspect_text
 
-ROOT_FILES = {'main.py', 'README.md', 'SECURITY.md', 'PRIVACY.md', 'CONTRIBUTING.md',
+ROOT_FILES = {'main.py', 'AutoQuestion.pyw', 'README.md', 'SECURITY.md', 'PRIVACY.md', 'CONTRIBUTING.md',
               'CHANGELOG.md', 'requirements.txt', 'requirements-dev.txt', 'pyproject.toml',
               '.gitignore', '.gitattributes', '.editorconfig', '.env.example', 'LICENSE', 'NOTICE'}
 DIRECTORIES = {'src', 'tests', 'examples', 'docs', '.github', 'tools', 'extension'}
-SUFFIXES = {'.py', '.js', '.html', '.md', '.txt', '.toml', '.yml', '.yaml'}
+SUFFIXES = {'.py', '.js', '.html', '.css', '.md', '.txt', '.toml', '.yml', '.yaml'}
 IGNORED_DIRS = {'.git', '__pycache__', '.pytest_cache', '.venv', 'venv', '.idea', '.vscode',
                 'logs', 'screenshots', 'captures', 'build', 'dist', 'htmlcov', '.cache',
                 'AppData', 'user-data', 'browser-profile', '.local-browsers', 'ms-playwright', '.playwright'}
@@ -30,7 +30,9 @@ REQUIRED = (ROOT_FILES - {'LICENSE', 'NOTICE'}) | {
     '.github/pull_request_template.md', 'examples/demo_quiz.html', 'examples/demo_canvas_quiz.html',
     'src/autoquestion/capture/dom_extract.js', 'extension/manifest.json', 'extension/worker.js',
     'extension/extractor.js', 'extension/popup.html', 'extension/popup.js',
-    'docs/BROWSER_DOM_SETUP.md', 'docs/MANUAL_ACCEPTANCE_M15.md'} | {
+    'docs/BROWSER_DOM_SETUP.md', 'docs/MANUAL_ACCEPTANCE_M15.md',
+    'src/autoquestion/web/index.html', 'src/autoquestion/web/app.js',
+    'src/autoquestion/web/style.css', 'docs/WEB_UI.md'} | {
         f'examples/browser_dom/{name}.html' for name in (
             'single_choice', 'multiple_choice', 'true_false', 'no_labels', 'noise_page',
             'canvas_question', 'iframe_question', 'spa_like_question')}

@@ -148,7 +148,7 @@ class TaskRunner:
         self._set_status(Status.STOPPED)
 
 
-def main(argv: list[str] | None = None, *, parsed_args=None, runtime=None) -> int:
+def main(argv: list[str] | None = None, *, parsed_args=None, runtime=None, on_ready=None) -> int:
     from .cli import parse_args
     args = parsed_args if parsed_args is not None else parse_args(argv)
     if args.doctor:
@@ -223,6 +223,8 @@ def main(argv: list[str] | None = None, *, parsed_args=None, runtime=None) -> in
                     LOGGER.info("Managed Demo: not open; --open-demo enables local DOM testing.")
                 LOGGER.info("AUTO: 浏览器优先 DOM；取题不可用时 Vision；桌面窗口直接 Vision。截图不保存。")
             runner.ready()
+            if on_ready is not None:
+                on_ready(runner, bridge)
             hotkeys.listen(runner)
         return 0
     except (BrowserExtractionError, ConfigError, HotkeyError) as exc:
