@@ -202,7 +202,9 @@ function showResult(result) {
   $("question-text").textContent = question.question_text;
   $("result-source").textContent =
     question.source_type === "MANUAL"
-      ? "离线预置 Demo"
+      ? result.offline
+        ? "离线预置 Demo"
+        : "固定文本 Demo"
       : `${question.source_type} 输入`;
   $("question-options").replaceChildren();
   const indices = answer.selected_indices.length
@@ -226,6 +228,8 @@ function showResult(result) {
 }
 function render() {
   const config = state.config;
+  const offline =
+    (state.active_protocol || config?.protocol_provider) === "fake";
   const label =
     {
       STOPPED: "尚未启动",
@@ -262,30 +266,34 @@ function render() {
     providers.find((provider) => provider.id === config?.provider_profile)
       ?.name ||
     "先连接你的模型";
-  $("provider-initial").textContent = state.active_profile || config ? $("provider-name").textContent[0] : "◇";
-  $("provider-model").textContent =
-    state.active_mode === "demo"
-      ? "预置示例 · 无 API 请求"
-      : config?.model || "也可以先体验离线 Demo";
+  $("provider-initial").textContent =
+    state.active_profile || config ? $("provider-name").textContent[0] : "◇";
+  $("provider-model").textContent = offline
+    ? "预置示例 · 无 API 请求"
+    : config?.model || "也可以先体验离线 Demo";
   $("input-mode").textContent = (
     state.active_mode ||
     config?.input_mode ||
     "auto"
   ).toUpperCase();
-  $("vision-capability").textContent = !config
-    ? "待配置"
-    : config.supports_vision
-      ? "已启用"
-      : "未启用";
-  $("key-status").textContent = !config
-    ? "待配置"
-    : config.protocol_provider === "fake"
-      ? "无需 Key"
-      : config.has_key
-        ? config.credential_mode === "stored"
-          ? "安全保存"
-          : "仅本次"
-        : "需要输入";
+  $("vision-capability").textContent = offline
+    ? "不支持图片"
+    : !config
+      ? "待配置"
+      : config.supports_vision
+        ? "已启用"
+        : "未启用";
+  $("key-status").textContent = offline
+    ? "无需 Key"
+    : !config
+      ? "待配置"
+      : config.protocol_provider === "fake"
+        ? "无需 Key"
+        : config.has_key
+          ? config.credential_mode === "stored"
+            ? "安全保存"
+            : "仅本次"
+          : "需要输入";
   $("runtime-error").hidden = !state.error;
   $("runtime-error").textContent = state.error || "";
   $("history-count").textContent = String(state.history.length);
@@ -362,6 +370,7 @@ async function refresh() {
 }
 const demoResult = {
   time: "示例",
+  offline: true,
   question: {
     question_text: "法国的首都是哪里？",
     question_type: "single_choice",
@@ -386,6 +395,7 @@ const demoResult = {
 };
 function previewDemo() {
   state.active = true;
+  state.active_protocol = "fake";
   state.active_mode = "demo";
   state.active_profile = "Offline Demo";
   state.status = "ANALYZING";

@@ -149,6 +149,7 @@ class WebUITests(unittest.TestCase):
             wait_until(lambda: bool(self.controller.state()['history']) and self.controller.runner.state == Status.READY)
             answer = self.controller.state()['history'][0]
             self.assertEqual(answer['answer']['selected_text'], '巴黎')
+            self.assertTrue(answer['offline'])
             self.assertEqual(self.request('/api/config', self.config())[0], 400)
             self.assertEqual(self.request('/api/start', {'offline_demo': True})[0], 400)
             self.assertEqual(self.request('/api/stop', {})[0], 200)

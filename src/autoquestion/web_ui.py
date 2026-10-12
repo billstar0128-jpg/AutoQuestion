@@ -56,6 +56,7 @@ class UIController:
         self.started = None
         self.active_profile = ''
         self.active_mode = ''
+        self.active_protocol = ''
         self.handler = UIEvents(self)
         logging.getLogger('autoquestion').addHandler(self.handler)
 
@@ -92,6 +93,7 @@ class UIController:
                         error=self.error or config_error, route=self.route,
                         active_profile=self.active_profile if active else '',
                         active_mode=self.active_mode if active else '',
+                        active_protocol=self.active_protocol if active else '',
                         history=list(self.history), events=list(self.events))
 
     def _require_stopped(self):
@@ -185,6 +187,7 @@ class UIController:
             self.runner = self.bridge = None
             self.active_profile = get_preset(saved.provider_profile).display_name
             self.active_mode = saved.input_mode
+            self.active_protocol = config.llm_provider
             def ready(runner, bridge):
                 with self.lock:
                     self.runner, self.bridge = runner, bridge
@@ -231,7 +234,7 @@ class UIController:
         with self.lock:
             if hasattr(record, 'question_result') and hasattr(record, 'answer_result'):
                 self.history.insert(0, dict(question=record.question_result, answer=record.answer_result,
-                                           time=time.strftime('%H:%M:%S')))
+                                           time=time.strftime('%H:%M:%S'), offline=self.active_protocol == 'fake'))
                 del self.history[20:]
                 self.error = ''
             text = record.getMessage()

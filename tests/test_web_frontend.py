@@ -77,6 +77,8 @@ class WebFrontendTests(unittest.TestCase):
         self.page.locator('#answer-result').wait_for(state='visible')
         self.assertIn('巴黎', self.page.locator('#answer-text').inner_text())
         self.assertIn('预置', self.page.locator('#answer-reason').inner_text())
+        self.assertEqual(self.page.locator('#key-status').inner_text(), '无需 Key')
+        self.assertEqual(self.page.locator('#vision-capability').inner_text(), '不支持图片')
         self.assertEqual(self.controller.store.load().provider_profile, 'deepseek')
         self.page.locator('.nav-link[data-view=settings]').click()
         self.assertTrue(self.page.locator('#save-button').is_disabled())
@@ -112,6 +114,10 @@ class WebFrontendTests(unittest.TestCase):
         self.assertIn('<img', self.page.locator('#question-text').inner_text())
         self.assertEqual(self.page.locator('#answer-result img, #answer-result script').count(), 0)
         self.assertFalse(self.page.evaluate('Boolean(window.injected)'))
+        with self.controller.lock:
+            self.controller.history[0]['question']['source_type'] = 'MANUAL'
+            self.controller.history[0]['offline'] = False
+        self.page.wait_for_function("() => document.querySelector('#result-source').textContent === '固定文本 Demo'")
 
     def test_static_preview_never_requests_local_api_or_accepts_key(self):
         output = build(Path(self.directory.name) / 'preview')
