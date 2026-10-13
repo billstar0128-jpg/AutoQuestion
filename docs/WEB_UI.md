@@ -1,5 +1,15 @@
 # 本机网页工作台
 
+## 普通用户：下载 Windows App
+
+[下载 AutoQuestion-0.2.1-Windows-x64.zip](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.2.1/AutoQuestion-0.2.1-Windows-x64.zip)，右键“全部解压”，保留 _internal 文件夹，双击 AutoQuestion.exe。无需 Python、依赖安装或 PowerShell。App 会在浏览器打开本机界面；在这里可以真正输入、保存配置并运行答题。
+
+网站首页只提供 App 下载与说明，API Key 不在网上填写。先前网页是交互预览，无法保存配置；该入口已改成明确的下载页。可选交互预览放在单独的 preview/，其“配置”按钮引导下载 App。
+
+便携 App 未做商业代码签名，不要求管理员权限。下载时可能出现 Windows 未知发布者提示；发布页提供 SHA256 校验文件。许可证与实际依赖的完整许可文本随包附带，包含 Python、PyInstaller 例外说明等。
+
+## 源码用户
+
 完整解压源码后，双击根目录 **AutoQuestion.pyw**。需要标准 Windows Python 3.10 或更新版本；如果 .pyw 没有关联，用 Python Launcher 打开。第一次会以图形窗口询问是否创建 .venv-win 并安装 requirements.txt，后续直接在默认浏览器打开工作台，不需要日常使用 PowerShell。首次准备需要网络；普通答题不要求安装 Playwright Chromium runtime。
 
 工作台有三个页面：答题工作台、模型与配置、开始使用。无配置时直接显示首次配置；已有配置时读取当前用户的 AppData 配置，已保存 Key 不回传浏览器。点击启动后把题目窗口置前台再按 F8，答案与实际来源会显示在工作台。ESC 停止热键服务并释放资源，控制台保留以便重新启动。点击“退出本机程序”清空内存记录并关闭本机服务；只关闭浏览器标签不会退出后台，请使用退出按钮。
@@ -34,6 +44,6 @@ Key 可选择 Windows 安全凭据保存或仅本次使用。更换 API 地址�
 
 ## 在线交互预览与开发
 
-GitHub Pages 上只发布这套 UI 的静态交互预览与公共服务商示例。预览禁用 API Key 输入和本机操作，只演示固定题目；不能读取你的 Windows 屏幕或调用模型。下载完整源码后双击本机入口才能实际答题。
+GitHub Pages 首页是 App 下载页，不提供假的在线配置表单。独立 preview/ 才是静态界面预览；禁用 Key 输入与本机操作。实际配置、F8 与模型调用由下载的 App 执行。
 
-开发者也可运行 `main.py --ui`。静态预览通过 `tools/build_web_preview.py` 导出到被忽略的 dist/，不包含用户配置、凭据、Python 环境、答题记录或截图。前端无需 Node、npm 或第三方 CDN；资源随源码提供。
+开发者也可运行 `main.py --ui`。网站通过 `tools/build_web_preview.py` 导出到被忽略的 dist/site/；Windows App 在 dist/windows/，发布工作流不会把该目录混入网站。前端无需 Node、npm 或第三方 CDN。

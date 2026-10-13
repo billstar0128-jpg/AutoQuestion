@@ -13,7 +13,7 @@ import webbrowser
 from pydantic import SecretStr, ValidationError
 
 from . import __version__
-from .config import ConfigError, load_config, load_llm_config
+from .config import ConfigError, APISettingsError, load_config, load_llm_config, validate_base_url, validate_model_id
 from .credentials import CredentialError, WindowsCredentials
 from .provider_presets import get_preset, public_presets
 from .setup_wizard import save_configuration
@@ -119,8 +119,18 @@ class UIController:
                     if not isinstance(raw, str) or len(raw.encode('utf-8')) > 2560 or any(ord(c) < 32 or ord(c) == 127 for c in raw):
                         raise UIError('API Key 格式无效；请重新输入。')
                     secret = SecretStr(raw.strip()) if raw.strip() else None
+                    try:
+                        base_url = validate_base_url(body.get('base_url', ''))
+                    except APISettingsError:
+                        raise UIError('请填写 API Base URL，例如 ' + (preset.default_base_url or 'http://127.0.0.1:8000/v1') + '。地址与 Model ID 是两项。') from None
+                    try:
+                        model = validate_model_id(body.get('model', ''))
+                    except APISettingsError:
+                        raise UIError('请填写 Model ID，例如 ' + (preset.example_models[0] if preset.example_models else '服务商提供的模型标识') + '；这里不要填网址。') from None
+                    if base_url.rstrip('/').endswith('/chat/completions'):
+                        raise UIError('Base URL 只填 API 根地址，请去掉结尾的 /chat/completions。')
                     config = UserConfig(provider_profile=preset.id, protocol_provider=preset.protocol_provider,
-                                        base_url=body.get('base_url', ''), model=body.get('model', ''),
+                                        base_url=base_url, model=model,
                                         supports_vision=body.get('supports_vision', False),
                                         input_mode=body.get('input_mode', 'auto'),
                                         credential_mode='session')

@@ -121,14 +121,15 @@ class WebFrontendTests(unittest.TestCase):
 
     def test_static_preview_never_requests_local_api_or_accepts_key(self):
         output = build(Path(self.directory.name) / 'preview')
-        self.assertEqual({path.name for path in output.iterdir()}, {'index.html', 'app.js', 'style.css', 'providers.json'})
+        self.assertEqual({path.name for path in output.iterdir()}, {'index.html', 'download.css', 'preview'})
+        self.assertNotIn('id="api-key"', (output / 'index.html').read_text(encoding='utf-8'))
         requests = []
         files = ThreadingHTTPServer(('127.0.0.1', 0), partial(SilentFiles, directory=str(output)))
         thread = threading.Thread(target=files.serve_forever, daemon=True)
         thread.start()
         try:
             self.page.on('request', lambda request: requests.append(request.url))
-            self.page.goto(f'http://127.0.0.1:{files.server_port}/')
+            self.page.goto(f'http://127.0.0.1:{files.server_port}/preview/')
             self.page.wait_for_function("() => document.querySelector('#provider').options.length === 6")
             self.assertTrue(self.page.locator('#preview-banner').is_visible())
             self.page.locator('.nav-link[data-view=settings]').click()

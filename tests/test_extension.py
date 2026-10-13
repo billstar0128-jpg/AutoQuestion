@@ -7,6 +7,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 from playwright.sync_api import sync_playwright
+from autoquestion import __version__
 from autoquestion.capture.browser import question_from_dom
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,7 +38,7 @@ class ExtensionTests(unittest.TestCase):
         self.assertEqual(set(manifest['permissions']), {'activeTab', 'scripting'})
         for forbidden in ('host_permissions', 'content_scripts', 'externally_connectable', 'web_accessible_resources'):
             self.assertNotIn(forbidden, manifest)
-        self.assertEqual(manifest['version'], '0.2.0')
+        self.assertEqual(manifest['version'], __version__)
 
     def test_fixtures_and_unselected_controls(self):
         for name, kind in [('single_choice', 'single_choice'), ('multiple_choice', 'multiple_choice'),

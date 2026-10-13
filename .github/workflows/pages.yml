@@ -28,7 +28,7 @@ jobs:
         run: python tools/build_web_preview.py
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: dist
+          path: dist/site
   deploy:
     needs: build
     runs-on: ubuntu-latest

@@ -10,7 +10,11 @@ if (token && loopback) {
   sessionStorage.setItem("aq-session", token);
   history.replaceState(null, "", location.pathname);
 }
-const preview = !token;
+const preview =
+  !token && (!loopback || location.pathname.includes("/preview/"));
+const locked = !token && !preview;
+const appDownload =
+  "https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.2.1/AutoQuestion-0.2.1-Windows-x64.zip";
 let providers = [];
 let state = {
   config: null,
@@ -97,6 +101,7 @@ function examples(reset = false) {
   if (!provider) return;
   const offline = provider.id === "offline_demo";
   $("api-fields").hidden = offline;
+  $("base-url").required = $("model").required = !offline && !preview;
   $("offline-note").hidden = !offline;
   $("example-provider").textContent = offline
     ? "无需配置，直接体验"
@@ -253,11 +258,14 @@ function render() {
     "busy",
     state.active && state.status !== "READY",
   );
-  $("start-button").textContent = state.active
-    ? "停止答题 ⏸"
-    : !config && !preview
-      ? "完成首次配置 →"
-      : "启动答题 ↗";
+  $("version").textContent = "v" + (state.version || "0.2.1");
+  $("start-button").textContent = preview
+    ? "下载 App 后开始 →"
+    : state.active
+      ? "停止答题 ⏸"
+      : !config && !preview
+        ? "完成首次配置 →"
+        : "启动答题 ↗";
   $("start-button").disabled =
     state.status === "STOPPING" || state.status === "STARTING";
   $("demo-button").disabled = state.active;
@@ -425,11 +433,7 @@ $("demo-button").addEventListener("click", () =>
 $("start-button").addEventListener("click", () =>
   action(async () => {
     if (preview) {
-      if (state.active) {
-        state.active = false;
-        state.status = "STOPPED";
-        render();
-      } else previewDemo();
+      location.href = appDownload;
       return;
     }
     if (state.active) {
@@ -465,7 +469,7 @@ $("settings-form").addEventListener("submit", (event) => {
   action(async () => {
     $("save-message").hidden = true;
     if (preview) {
-      toast("这是配置示例预览。请在 Windows 本机版中保存模型和 API Key。");
+      location.href = appDownload;
       return;
     }
     const body = {
@@ -527,11 +531,24 @@ async function poll() {
 }
 async function initialize() {
   try {
+    if (locked) {
+      $("preview-banner").hidden = false;
+      $("preview-banner").textContent =
+        "这个标签没有本机会话。请双击 AutoQuestion.exe 重新打开，便可正常配置。";
+      $("connection-label").textContent = "需要从 App 打开";
+      $("start-button").disabled =
+        $("demo-button").disabled =
+        $("pair-button").disabled =
+          true;
+      $("exit-button").hidden = true;
+      return;
+    }
     if (preview) {
       $("preview-banner").hidden = false;
       $("connection-label").textContent = "界面预览";
       $("exit-button").hidden = true;
       $("api-key").placeholder = "在 Windows 本机版中填写";
+      $("save-button").textContent = "下载 App 后配置 →";
       const response = await fetch("providers.json", { cache: "no-store" });
       if (!response.ok) throw new Error("配置示例加载失败。");
       providers = (await response.json()).providers;
@@ -549,7 +566,18 @@ async function initialize() {
     if (!state.config && !preview) view("settings");
     if (!preview) pollTimer = setTimeout(poll, 1200);
   } catch (error) {
+    $("connection-label").textContent = "App 连接失败";
+    $("preview-banner").hidden = false;
+    $("preview-banner").textContent =
+      "请双击 AutoQuestion.exe 重新打开本机工作台，再填写配置。";
     toast(error.message || "界面加载失败，请重新打开。");
   }
 }
+document
+  .querySelectorAll(
+    "#settings-form input, #settings-form select, #settings-form button",
+  )
+  .forEach((field) => {
+    field.disabled = true;
+  });
 initialize();

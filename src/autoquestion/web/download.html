@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="description"
+      content="下载 AutoQuestion Windows App。解压、双击、配置你的模型，题目放到前台后按 F8。"
+    />
+    <title>AutoQuestion · 下载 Windows App</title>
+    <link rel="stylesheet" href="download.css" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="./"><span>A·</span> AutoQuestion</a>
+      <nav>
+        <a href="#setup">怎么开始</a><a href="#configuration">配置示例</a
+        ><a href="https://github.com/billstar0128-jpg/AutoQuestion"
+          >GitHub ↗</a
+        >
+      </nav>
+    </header>
+    <main>
+      <section class="hero">
+        <div>
+          <span class="eyebrow">WINDOWS APP · v@@VERSION@@</span>
+          <h1>题目在屏幕上。<br />答案，在一个 <em>F8</em> 之后。</h1>
+          <p>
+            下载到电脑，双击打开。<br />在本机界面配置模型、启动答题、查看结果。
+          </p>
+          <a
+            class="button primary"
+            href="https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v@@VERSION@@/AutoQuestion-@@VERSION@@-Windows-x64.zip"
+            >下载 Windows App <span>↓</span></a
+          >
+          <div class="download-note">
+            Windows 10 / 11 · x64 · 无需 Python / PowerShell
+          </div>
+        </div>
+        <div class="app-window" aria-label="App 界面示意">
+          <div class="window-bar">
+            <span>● ● ●</span><b>AutoQuestion</b><small>本机工作台</small>
+          </div>
+          <div class="window-content">
+            <span class="ready">● READY · 等待 F8</span>
+            <h2>把题目放到前台，<br />剩下交给 F8。</h2>
+            <div class="answer-demo">
+              <small>离线预置示例 · 非真实模型请求</small>
+              <h3>法国的首都是哪里？</h3>
+              <div class="choice selected">A &nbsp; 巴黎</div>
+              <div class="choice">B &nbsp; 伦敦</div>
+              <p>参考答案 <strong>A · 巴黎</strong></p>
+            </div>
+          </div>
+        </div>
+      </section>
+      <div class="important">
+        <strong>这是 App 下载页。</strong> API Key 和实际答题在下载后的本机 App
+        中配置。<a href="preview/">查看交互预览 ↗</a>
+      </div>
+      <section id="setup">
+        <span class="eyebrow">3 STEPS TO START</span>
+        <h2>从下载，到第一道题。</h2>
+        <div class="steps">
+          <article>
+            <span>01</span>
+            <h3>下载并完整解压</h3>
+            <p>下载上面的 ZIP，右键“全部解压”。保留里面的 _internal 文件夹。</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>双击 AutoQuestion.exe</h3>
+            <p>本机工作台会自动打开。无需安装 Python，无需终端命令。</p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>配置、启动、按 F8</h3>
+            <p>
+              填好自己的 API 配置并保存。启动后把题目窗口放到前台，按 F8；ESC
+              停止服务。
+            </p>
+          </article>
+        </div>
+      </section>
+      <section id="configuration" class="configuration">
+        <div>
+          <span class="eyebrow">A REAL EXAMPLE</span>
+          <h2>拿 DeepSeek 举个例子。</h2>
+          <p>
+            在 App 的“模型与配置”页填这两项。<br />API Key
+            使用你在服务商平台创建的密钥。
+          </p>
+          <a
+            href="https://api-docs.deepseek.com/"
+            target="_blank"
+            rel="noreferrer"
+            >查看官方文档 ↗</a
+          >
+        </div>
+        <div class="example">
+          <label>API Base URL</label><code>https://api.deepseek.com</code
+          ><label>Model ID 示例</label
+          ><code>deepseek-flash / deepseek-v4-pro</code>
+          <p>
+            只填根地址，不要加
+            /chat/completions。图片能力按具体模型确认，示例与权限以官方文档为准。
+          </p>
+        </div>
+      </section>
+      <section class="privacy">
+        <h2>你的模型，在你的电脑上用。</h2>
+        <p>
+          网页优先 DOM，桌面使用 Vision。API Key 由 Windows
+          安全凭据或本次内存保存；App
+          不会自动点击或提交。模型可能答错，请核对答案。
+        </p>
+        <div class="links">
+          <a
+            href="https://github.com/billstar0128-jpg/AutoQuestion/blob/main/docs/WEB_UI.md"
+            >使用说明 ↗</a
+          ><a
+            href="https://github.com/billstar0128-jpg/AutoQuestion/releases/tag/v@@VERSION@@"
+            >版本与校验文件 ↗</a
+          ><a href="https://github.com/billstar0128-jpg/AutoQuestion/issues"
+            >反馈问题 ↗</a
+          >
+        </div>
+      </section>
+    </main>
+    <footer>
+      AutoQuestion · Apache-2.0 <span>为少一点重复操作写的小工具。</span>
+    </footer>
+  </body>
+</html>

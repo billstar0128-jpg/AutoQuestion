@@ -15,8 +15,9 @@ import sys
 import warnings
 
 from .secret_safety import scan_project
+from .resources import resource_root
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = resource_root()
 PACKAGES = (('pydantic', 'pydantic'), ('openai', 'openai'), ('mss', 'mss'),
             ('Pillow', 'PIL.Image'), ('python-dotenv', 'dotenv'), ('playwright', 'playwright.sync_api'),
             ('websockets', 'websockets.sync.server'))

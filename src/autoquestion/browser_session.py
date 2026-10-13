@@ -15,9 +15,10 @@ from playwright.async_api import Browser, Error as PlaywrightError, Playwright, 
 from .capture.browser import AsyncBrowserDOMAdapter, BrowserExtractionError
 from .capture.screen import WindowTarget, WindowsWindowAPI
 from .schemas import Question
+from .resources import resource_root
 
 LOGGER = logging.getLogger("autoquestion")
-DEMO_PATH = Path(__file__).resolve().parents[2] / "examples" / "demo_quiz.html"
+DEMO_PATH = resource_root() / "examples" / "demo_quiz.html"
 CANVAS_PATH = DEMO_PATH.with_name("demo_canvas_quiz.html")
 DEMO_URLS = {DEMO_PATH.as_uri(), CANVAS_PATH.as_uri()}
 T = TypeVar("T")
