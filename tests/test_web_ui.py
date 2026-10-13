@@ -6,6 +6,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import socket
 import sys
 from tempfile import TemporaryDirectory
 import threading
@@ -101,6 +102,30 @@ class WebUITests(unittest.TestCase):
                 self.assertEqual(headers['Cache-Control'], 'no-store')
         for path in ('/../.env', '/config.json', '/api/state?token=secret', '/web_ui.py'):
             self.assertEqual(self.request(path)[0], 404)
+
+    def test_oversize_rejection_is_readable_with_pending_request_data(self):
+        # Exercise the Windows TCP reset race while the rejected body is queued.
+        for _ in range(20):
+            code, body, headers = self.request('/api/config', raw='x' * 16385)
+            self.assertEqual(code, 413)
+            self.assertIn('error', json.loads(body))
+            self.assertEqual(headers['Connection'], 'close')
+        self.assertFalse(self.store.path.exists())
+        self.assertEqual(self.backend.calls, [])
+
+    def test_oversize_headers_are_rejected_before_body_arrives(self):
+        with socket.create_connection(('127.0.0.1', self.server.server_port), timeout=2) as connection:
+            request = (f'POST /api/config HTTP/1.1\r\nHost: 127.0.0.1:{self.server.server_port}\r\n'
+                       f'Origin: {self.server.origin}\r\nX-AutoQuestion-Token: {self.server.token}\r\n'
+                       'Content-Type: application/json\r\nContent-Length: 1000000000\r\n\r\n')
+            connection.sendall(request.encode('ascii'))
+            response = http.client.HTTPResponse(connection)
+            response.begin()
+            self.assertEqual(response.status, 413)
+            self.assertIn('error', json.loads(response.read()))
+            response.close()
+        self.assertFalse(self.store.path.exists())
+        self.assertEqual(self.backend.calls, [])
 
     def test_session_save_never_stores_or_returns_key_and_preserves_after_restart(self):
         self.assertEqual(self.request('/api/config', self.config())[0], 200)

@@ -12,6 +12,7 @@ from openai import OpenAI
 from autoquestion.app import TaskRunner, Status, main
 from autoquestion.browser_session import BrowserSession
 from autoquestion.config import Config, ConfigError, load_llm_config
+from autoquestion.dom import make_dom_callback
 from autoquestion.hotkeys import WindowsHotkeys
 from autoquestion.llm.openai_compatible import OpenAICompatibleProvider
 from autoquestion.router import InputRouter
@@ -115,6 +116,10 @@ class ReliabilityTests(unittest.TestCase):
                     runner.stop()
                 with (patch('autoquestion.app.load_config', return_value=Config(input_mode='dom')),
                      patch('autoquestion.browser_session.BrowserSession', return_value=session),
+                     # Keep native hotkeys, browser and worker real; isolate this
+                     # lifecycle test from unrelated foreground desktop windows.
+                     patch('autoquestion.router.make_auto_prepare',
+                           side_effect=lambda config, browser, report, **_: lambda: make_dom_callback(config, browser, report)),
                      patch.object(WindowsHotkeys, 'listen', listen), self.assertLogs('autoquestion', 'DEBUG') as logs):
                     code = main(['--open-demo'])
                 self.assertEqual(code, 1 if exit_kind == 'error' else 0)
@@ -122,6 +127,7 @@ class ReliabilityTests(unittest.TestCase):
                 self.assertEqual(observed[0].state, Status.STOPPED)
                 self.assertFalse(session._thread.is_alive())
                 self.assertTrue(session._closed)
+                self.assertIn('答案：A', '\n'.join(logs.output))
                 self.assertNotIn('PRIVATE_EXIT', '\n'.join(logs.output))
                 with WindowsHotkeys(Config()):
                     pass

@@ -6,6 +6,7 @@ import json
 import logging
 from pathlib import Path
 import secrets
+import socket
 import threading
 import time
 import webbrowser
@@ -297,9 +298,31 @@ class UIHandler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass  # No request, bearer token, configuration or question logs on disk.
 
+    def finish(self):
+        super().finish()
+        if not getattr(self, '_rejected', False):
+            return
+        # RFC 9112 section 9.6: closing with unread request data can reset TCP
+        # and erase the error response on Windows. Send FIN before discarding
+        # a bounded amount of pending data. Never wait for a declared huge body.
+        try:
+            self.connection.shutdown(socket.SHUT_WR)
+            deadline = time.monotonic() + 0.5
+            remaining = MAX_BODY + 1
+            while remaining and (wait := deadline - time.monotonic()) > 0:
+                self.connection.settimeout(wait)
+                data = self.connection.recv(min(4096, remaining))
+                if not data:
+                    break
+                remaining -= len(data)
+        except OSError:
+            pass
+
     def _reply(self, code, body, content_type='application/json; charset=utf-8'):
         payload = json.dumps(body, ensure_ascii=False).encode('utf-8') if isinstance(body, dict) else body
+        self._rejected = code >= 400
         self.send_response(code)
+        self.send_header('Connection', 'close')
         self.send_header('Content-Type', content_type)
         self.send_header('Content-Length', str(len(payload)))
         self.send_header('Cache-Control', 'no-store')

@@ -120,11 +120,16 @@ class DOMWorkflowTests(unittest.TestCase):
         def listen(runner):
             self.run_job(runner)
             runner.stop()
+        # Headless browser lifecycle must not depend on the user's foreground
+        # window. Real HWND routing is covered by smoke_browser_window.py.
         with patch('autoquestion.app.load_config', return_value=Config(input_mode='dom')), \
              patch('autoquestion.browser_session.BrowserSession', return_value=browser), \
-             patch('autoquestion.hotkeys.WindowsHotkeys') as hotkeys:
+             patch('autoquestion.router.make_auto_prepare',
+                   side_effect=lambda config, session, report, **_: lambda: make_dom_callback(config, session, report)), \
+             patch('autoquestion.hotkeys.WindowsHotkeys') as hotkeys, self.assertLogs('autoquestion', 'INFO') as logs:
             hotkeys.return_value.__enter__.return_value.listen.side_effect = listen
             self.assertEqual(main(['--open-demo']), 0)
+        self.assertIn('答案：A', '\n'.join(logs.output))
         self.assertTrue(browser._closed)
 
     def test_default_mode_retained_and_dom_explicit(self):

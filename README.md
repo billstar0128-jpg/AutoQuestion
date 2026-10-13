@@ -44,11 +44,11 @@ python -m venv .venv-win
 
 无需激活虚拟环境。普通 AUTO、Vision 和固定 Offline Demo 不需要安装 Chromium runtime；本地 DOM Demo 才需要，见下节。
 
-## Quick Start（小白版）
+## 源码安装（详细步骤）
 
-如果看不懂上面的内容，这里还有一个更详细的 **Quick Start（小白版）**。
+以下步骤适用于从源码运行。普通用户请使用上面的 Windows App 下载入口，完整解压并双击 AutoQuestion.exe，无需 Python 或 PowerShell。
 
-AutoQuestion 目前运行在 Windows 上。你需要先安装标准的 **Windows Python 3.10 或更高版本**。
+从源码运行时，你需要先安装标准的 **Windows Python 3.10 或更高版本**。
 
 ### 1. 下载 AutoQuestion
 
@@ -248,7 +248,7 @@ python -m venv .venv-win
 后续配置方法请继续阅读下面的 **First-run Setup**。
 
 
-### First-run Setup
+## First-run Setup
 
 双击启动的网页工作台在没有配置时直接进入“模型与配置”。字段旁提供服务商根地址、Model ID 示例和图片能力说明；点击模型示例即可填入，Key 通过安全凭据或仅本次模式保存。原有命令行向导也会在提问前显示相同示例。以 DeepSeek 为例，Base URL 填 `https://api.deepseek.com`，模型可以按账户选 `deepseek-flash` 或 `deepseek-v4-pro` 等；不要加 `/chat/completions`。模型列表与图片能力见 [配置示例与官方来源](docs/WEB_UI.md#第一次配置示例)。
 
@@ -281,7 +281,7 @@ $env:PLAYWRIGHT_BROWSERS_PATH = '0'
 ## Browser DOM Setup（可选）
 
 先按上面的 Quick Start 跑通 Vision 即可，扩展不是安装 AutoQuestion 的前提。
-想在普通 Chrome / Edge 中用 DOM 时，按 [扩展安装与配对](docs/BROWSER_DOM_SETUP.md) 加载根目录 `extension` 文件夹，运行 `main.py --pair-browser`，在扩展弹窗输入本次配对码，然后授权当前题目站点。
+想在普通 Chrome / Edge 中用 DOM 时，按 [扩展安装与配对](docs/BROWSER_DOM_SETUP.md) 加载 App 解压目录或源码根目录的 `extension` 文件夹。在本机工作台启动 AUTO 或 DOM 后点击“获取本次配对码”，在扩展弹窗输入并授权当前题目站点。源码用户也可运行 `main.py --pair-browser`。
 连接成功会显示 `Browser DOM Bridge: connected`。关掉配对窗口和扩展弹窗，把题目放到前台再按 F8；成功时显示 `Input: Browser DOM`，不会截图。
 扩展未安装、当前站点未授权或题目提取不可靠时，AUTO 回退 Vision。扩展与程序均不保留配对码，重新启动程序需要重新配对。
 
@@ -315,7 +315,7 @@ Profile 是厂商预设，Protocol Provider 是实际请求适配器。
 
 已有 API root 核对依据保留：[DeepSeek](https://api-docs.deepseek.com/)、[Kimi](https://platform.kimi.com/docs/get-api-key)、[智谱](https://docs.bigmodel.cn/cn/guide/develop/openai/introduction)。真实预设可编辑地址和模型；预设可用不等于厂商所有模型都经过本项目验证。Vision 是具体 Model 的配置能力，不是品牌永久属性。
 
-Native Anthropic / Claude API **not supported in 0.2.0**。通过兼容网关调用 Claude 可以尝试 Custom，但不保证所有网关兼容。ChatGPT Plus / Pro 订阅不等于 OpenAI API Key 或 API billing balance，登录 ChatGPT App 不会自动提供 API 凭据；参见 [OpenAI API Quick Start](https://developers.openai.com/api/docs/quickstart)。
+Native Anthropic / Claude API **not supported in 0.2.1**。通过兼容网关调用 Claude 可以尝试 Custom，但不保证所有网关兼容。ChatGPT Plus / Pro 订阅不等于 OpenAI API Key 或 API billing balance，登录 ChatGPT App 不会自动提供 API 凭据；参见 [OpenAI API Quick Start](https://developers.openai.com/api/docs/quickstart)。
 
 ## Supported Question Types / limitations
 
@@ -356,7 +356,7 @@ Key 不进入普通 config、日志、repr 或仓库。不要上传真实 `.env`
 
 物理桌面另测 `.\.venv-win\Scripts\python.exe -X utf8 tests/smoke_browser_window.py -v`。关闭旧实例，测试窗口需获得前台；测试不会夺取其他用户窗口或读取真实屏幕像素。CI 不运行此可见 smoke；本地完整测试默认保留原生热键测试。
 
-[Development](docs/DEVELOPMENT.md) · [Technical Notes](docs/TECHNICAL_NOTES.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) · [Release Notes](docs/RELEASE_NOTES_0.2.0.md)
+[Development](docs/DEVELOPMENT.md) · [Technical Notes](docs/TECHNICAL_NOTES.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) · [Release Notes](docs/RELEASE_NOTES_0.2.1.md)
 
 ## License / publication state
 
