@@ -2,7 +2,7 @@
 
 ## 普通用户：下载 Windows App
 
-[下载 AutoQuestion-0.2.1-Windows-x64.zip](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.2.1/AutoQuestion-0.2.1-Windows-x64.zip)，右键“全部解压”，保留 _internal 文件夹，双击 AutoQuestion.exe。无需 Python、依赖安装或 PowerShell。App 会在浏览器打开本机界面；在这里可以真正输入、保存配置并运行答题。
+[下载 AutoQuestion-0.2.2-Windows-x64.zip](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.2.2/AutoQuestion-0.2.2-Windows-x64.zip)，右键“全部解压”，保留 _internal 文件夹，双击 AutoQuestion.exe。无需 Python、依赖安装或 PowerShell。App 会打开独立桌面窗口；在这里可以真正输入、保存配置并运行答题。
 
 网站首页只提供 App 下载与说明，API Key 不在网上填写。先前网页是交互预览，无法保存配置；该入口已改成明确的下载页。可选交互预览放在单独的 preview/，其“配置”按钮引导下载 App。
 
@@ -10,9 +10,9 @@
 
 ## 源码用户
 
-完整解压源码后，双击根目录 **AutoQuestion.pyw**。需要标准 Windows Python 3.10 或更新版本；如果 .pyw 没有关联，用 Python Launcher 打开。第一次会以图形窗口询问是否创建 .venv-win 并安装 requirements.txt，后续直接在默认浏览器打开工作台，不需要日常使用 PowerShell。首次准备需要网络；普通答题不要求安装 Playwright Chromium runtime。
+完整解压源码后，双击根目录 **AutoQuestion.pyw**。需要标准 Windows Python 3.10 或更新版本；如果 .pyw 没有关联，用 Python Launcher 打开。第一次会以图形窗口询问是否创建 .venv-win 并安装 requirements.txt，后续直接打开独立桌面工作台，不需要日常使用 PowerShell。首次准备需要网络；普通答题不要求安装 Playwright Chromium runtime。
 
-工作台有三个页面：答题工作台、模型与配置、开始使用。无配置时直接显示首次配置；已有配置时读取当前用户的 AppData 配置，已保存 Key 不回传浏览器。点击启动后把题目窗口置前台再按 F8，答案与实际来源会显示在工作台。ESC 停止热键服务并释放资源，控制台保留以便重新启动。点击“退出本机程序”清空内存记录并关闭本机服务；只关闭浏览器标签不会退出后台，请使用退出按钮。
+工作台有三个页面：答题工作台、模型与配置、开始使用。无配置时直接显示首次配置；已有配置时读取当前用户的 AppData 配置，已保存 Key 不回传浏览器。点击启动后把题目窗口置前台再按 F8，答案与实际来源会显示在工作台。ESC 停止热键服务并释放资源，控制台保留以便重新启动。点击右上角 × 或“退出本机程序”会停止答题、清空内存记录、关闭本机服务并退出。最小化保持运行，再次双击只唤起已有窗口。正在执行的同步模型请求会完成或超时后清理；保存的配置和安全凭据保留。
 
 离线 Demo 按钮仅本次启用 Fake/MANUAL 示例，不更改已保存的 API 配置。预置答案不代表真实模型能力。受管理 DOM Demo 仍可用原有 --open-demo 命令；需要对应 Chromium runtime。答题运行期间设置不能修改，先停止再保存。
 
@@ -36,7 +36,7 @@ Key 可选择 Windows 安全凭据保存或仅本次使用。更换 API 地址�
 
 ## 本机服务边界
 
-网页控制台只监听 127.0.0.1 的随机端口。浏览器通过 URL fragment 接收本次随机会话令牌，随后从地址栏移除；令牌仅用于本机 API，在该端口的 sessionStorage 中保留以支持刷新。API Key 不存入 localStorage/sessionStorage，不回传已保存的值。API 要求正确 Host 与令牌；写请求还要求同源 Origin、JSON 内容类型和大小限制。没有 CORS 放行、远程登录或云端 API 代理。
+网页控制台只监听 127.0.0.1 的随机端口。内嵌 WebView2 通过 URL fragment 接收本次随机会话令牌，随后从地址栏移除；令牌仅用于本机 API，在该端口的 sessionStorage 中保留以支持刷新。API Key 不存入 localStorage/sessionStorage，不回传已保存的值。API 要求正确 Host 与令牌；写请求还要求同源 Origin、JSON 内容类型和大小限制。没有 CORS 放行、远程登录或云端 API 代理。
 
 题目、答案及最多 20 条本次记录仅保留在本机进程内存中，可主动清空，退出销毁。界面使用 textContent 显示模型文本，不执行其中的 HTML。截图仍在内存中处理，模型请求依旧由原有后端发送给用户配置的服务商。Bridge 配对码仅在用户点击获取时回传到本机界面，30 秒后隐藏，不进入状态接口、记录或配置。
 
@@ -47,3 +47,7 @@ Key 可选择 Windows 安全凭据保存或仅本次使用。更换 API 地址�
 GitHub Pages 首页是 App 下载页，不提供假的在线配置表单。独立 preview/ 才是静态界面预览；禁用 Key 输入与本机操作。实际配置、F8 与模型调用由下载的 App 执行。
 
 开发者也可运行 `main.py --ui`。网站通过 `tools/build_web_preview.py` 导出到被忽略的 dist/site/；Windows App 在 dist/windows/，发布工作流不会把该目录混入网站。前端无需 Node、npm 或第三方 CDN。
+
+## 桌面窗口与运行环境
+
+使用 pywebview / Microsoft Edge WebView2，界面在独立 App 窗口内。WebView 使用私密模式，不接管 Chrome / Edge 个人 profile。缺少 Runtime 时按 [微软官方说明](https://developer.microsoft.com/microsoft-edge/webview2/) 安装。重复启动用当前 Windows 会话和配置路径对应的互斥锁，并通过只含“激活窗口”指令的本机窗口消息唤起已有 App；不把 API Key 或会话令牌放入进程间消息或锁文件。异常退出后锁由 Windows 回收。

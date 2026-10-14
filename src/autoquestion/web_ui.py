@@ -9,7 +9,6 @@ import secrets
 import socket
 import threading
 import time
-import webbrowser
 
 from pydantic import SecretStr, ValidationError
 
@@ -48,6 +47,7 @@ class UIController:
         self.lock = threading.RLock()
         self.runner = self.bridge = self.thread = None
         self.cancel = threading.Event()
+        self.closing = False
         self.session_secret = None
         self.secret_scope = None
         self.history = []
@@ -98,6 +98,8 @@ class UIController:
                         history=list(self.history), events=list(self.events))
 
     def _require_stopped(self):
+        if self.closing:
+            raise UIError('程序正在退出，请等待窗口关闭后重新打开。')
         if self.thread and self.thread.is_alive():
             raise UIError('请先停止答题，等待任务清理完成后再修改配置。')
 
@@ -260,8 +262,13 @@ class UIController:
                 if record.levelno >= logging.ERROR:
                     self.error = text[:600]
 
-    def close(self):
+    def begin_close(self):
+        with self.lock:
+            self.closing = True
         self.stop()
+
+    def close(self):
+        self.begin_close()
         if self.thread:
             self.thread.join()
         logging.getLogger('autoquestion').removeHandler(self.handler)
@@ -284,6 +291,7 @@ class UIServer(ThreadingHTTPServer):
     daemon_threads = True
     def __init__(self, controller, *, port=0):
         self.controller = controller
+        self.exit_callback = None
         self.token = secrets.token_urlsafe(32)
         super().__init__(('127.0.0.1', port), UIHandler)
         self.origin = f'http://127.0.0.1:{self.server_port}'
@@ -388,7 +396,14 @@ class UIHandler(BaseHTTPRequestHandler):
                    '/api/clear': self.server.controller.clear}
         if self.path == '/api/shutdown' and not data:
             self._reply(200, {'closing': True})
-            threading.Thread(target=self.server.shutdown, daemon=True).start()
+            self.server.controller.begin_close()
+            def shutdown():
+                try:
+                    if self.server.exit_callback:
+                        self.server.exit_callback()
+                finally:
+                    self.server.shutdown()
+            threading.Thread(target=shutdown, daemon=True).start()
             return
         if self.path not in actions:
             return self._reply(404, {'error': '操作不存在。'})
@@ -403,20 +418,5 @@ class UIHandler(BaseHTTPRequestHandler):
 
 
 def main():
-    logging.basicConfig(level=logging.INFO, handlers=[logging.NullHandler()])
-    server = UIServer(UIController())
-    url = server.origin + '/#session=' + server.token
-    try:
-        if not webbrowser.open(url):
-            import tkinter as tk
-            from tkinter import messagebox
-            root = tk.Tk()
-            root.withdraw()
-            messagebox.showinfo('AutoQuestion', '请在浏览器打开：\n' + url)
-            root.destroy()
-        server.serve_forever(poll_interval=0.2)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        server.close()
-    return 0
+    from .desktop_app import main as open_desktop
+    return open_desktop()

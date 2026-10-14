@@ -49,6 +49,9 @@ class WindowsHotkeys:
             for hotkey_id, key in ((self.analyze_id, self.config.hotkey), (self.exit_id, self.config.exit_key)):
                 if not self._user32.RegisterHotKey(None, hotkey_id, MOD_NOREPEAT, virtual_key(key)):
                     code = ctypes.get_last_error()
+                    if code == 1409:
+                        raise HotkeyError(f'{key} 已被占用（Windows 错误码 1409）。'
+                                          '请回到已运行的 AutoQuestion，或关闭占用该键的其他软件后重试。')
                     raise HotkeyError(
                         f"无法注册 {key}（Windows 错误码 {code}）。"
                         "请关闭占用该热键的程序或修改 HOTKEY / EXIT_KEY；也请检查桌面会话权限。"

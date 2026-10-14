@@ -14,7 +14,7 @@ const preview =
   !token && (!loopback || location.pathname.includes("/preview/"));
 const locked = !token && !preview;
 const appDownload =
-  "https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.2.1/AutoQuestion-0.2.1-Windows-x64.zip";
+  "https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.2.2/AutoQuestion-0.2.2-Windows-x64.zip";
 let providers = [];
 let state = {
   config: null,
@@ -258,7 +258,7 @@ function render() {
     "busy",
     state.active && state.status !== "READY",
   );
-  $("version").textContent = "v" + (state.version || "0.2.1");
+  $("version").textContent = "v" + (state.version || "0.2.2");
   $("start-button").textContent = preview
     ? "下载 App 后开始 →"
     : state.active
@@ -516,7 +516,7 @@ $("exit-button").addEventListener("click", () =>
     sessionStorage.removeItem("aq-session");
     token = "";
     $("connection-label").textContent = "已退出";
-    toast("AutoQuestion 已退出，可关闭此页面。下次双击启动入口重新打开。");
+    toast("AutoQuestion 已退出。下次双击桌面入口重新打开。");
   }),
 );
 async function poll() {

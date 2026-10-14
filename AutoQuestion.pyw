@@ -15,7 +15,7 @@ def launch():
     if window_python.exists() and Path(sys.prefix).resolve() != (ROOT / '.venv-win').resolve():
         subprocess.Popen([str(window_python), str(Path(__file__).resolve())], cwd=ROOT, creationflags=quiet)
         return
-    dependencies = subprocess.run([str(python), '-c', 'import pydantic,openai,playwright,PIL,dotenv,websockets'],
+    dependencies = subprocess.run([str(python), '-c', 'import pydantic,openai,playwright,PIL,dotenv,websockets,webview'],
                                   cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                   creationflags=quiet).returncode if python.exists() else 1
     if dependencies:

@@ -12,9 +12,9 @@
 
 **0.1.0rc1 还是第一个公开 Release Candidate。** 如果你愿意测试，遇到难装、难懂、识别失败或者任何反直觉的地方，Issue 比“能跑”更有价值。
 
-当前版本为 **0.2.1**：提供可直接运行的 Windows App；安装可选 AutoQuestion Browser Extension 后，受支持的 Chrome / Edge 页面在 AUTO 下优先 DOM，提取不可用时回退 Vision。WPS、记事本、PDF 阅读器及其他桌面应用直接 Vision。上面的介绍保留首次公开 RC 的背景。
+当前版本为 **0.2.2**：提供独立窗口的 Windows App，关闭窗口即可退出，再次双击唤起已有窗口；安装可选 AutoQuestion Browser Extension 后，受支持的 Chrome / Edge 页面在 AUTO 下优先 DOM，提取不可用时回退 Vision。WPS、记事本、PDF 阅读器及其他桌面应用直接 Vision。上面的介绍保留首次公开 RC 的背景。
 
-**普通用户：[下载 Windows App](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.2.1/AutoQuestion-0.2.1-Windows-x64.zip) → 完整解压 → 双击 AutoQuestion.exe。** 不需要 Python 或 PowerShell。在 App 打开的本机工作台中配置模型和 API Key，保存后启动答题。请保留 _internal 文件夹。详见 [App 使用说明](docs/WEB_UI.md)。[网站首页](https://billstar0128-jpg.github.io/AutoQuestion/) 是下载入口，配置在本机 App 内完成。
+**普通用户：[下载 Windows App](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.2.2/AutoQuestion-0.2.2-Windows-x64.zip) → 完整解压 → 双击 AutoQuestion.exe。** 不需要 Python 或 PowerShell。在 App 的独立窗口中配置模型和 API Key，保存后启动答题。请保留 _internal 文件夹。详见 [App 使用说明](docs/WEB_UI.md)。[网站首页](https://billstar0128-jpg.github.io/AutoQuestion/) 是下载入口，配置在本机 App 内完成。
 
 ## What it does
 
@@ -250,7 +250,7 @@ python -m venv .venv-win
 
 ## First-run Setup
 
-双击启动的网页工作台在没有配置时直接进入“模型与配置”。字段旁提供服务商根地址、Model ID 示例和图片能力说明；点击模型示例即可填入，Key 通过安全凭据或仅本次模式保存。原有命令行向导也会在提问前显示相同示例。以 DeepSeek 为例，Base URL 填 `https://api.deepseek.com`，模型可以按账户选 `deepseek-flash` 或 `deepseek-v4-pro` 等；不要加 `/chat/completions`。模型列表与图片能力见 [配置示例与官方来源](docs/WEB_UI.md#第一次配置示例)。
+双击启动的桌面 App 在没有配置时直接进入“模型与配置”。字段旁提供服务商根地址、Model ID 示例和图片能力说明；点击模型示例即可填入，Key 通过安全凭据或仅本次模式保存。原有命令行向导也会在提问前显示相同示例。以 DeepSeek 为例，Base URL 填 `https://api.deepseek.com`，模型可以按账户选 `deepseek-flash` 或 `deepseek-v4-pro` 等；不要加 `/chat/completions`。模型列表与图片能力见 [配置示例与官方来源](docs/WEB_UI.md#第一次配置示例)。
 
 没有有效保存配置或完整显式配置时，程序进入向导。以 DeepSeek 为例：选择 Provider → 确认 API root → 填账户可调用的 Model ID → 确认这个模型的图片能力 → 选择 AUTO → 安全输入 Key → 选择 Windows Credential Manager 或 session-only → 确认保存。
 
@@ -315,13 +315,13 @@ Profile 是厂商预设，Protocol Provider 是实际请求适配器。
 
 已有 API root 核对依据保留：[DeepSeek](https://api-docs.deepseek.com/)、[Kimi](https://platform.kimi.com/docs/get-api-key)、[智谱](https://docs.bigmodel.cn/cn/guide/develop/openai/introduction)。真实预设可编辑地址和模型；预设可用不等于厂商所有模型都经过本项目验证。Vision 是具体 Model 的配置能力，不是品牌永久属性。
 
-Native Anthropic / Claude API **not supported in 0.2.1**。通过兼容网关调用 Claude 可以尝试 Custom，但不保证所有网关兼容。ChatGPT Plus / Pro 订阅不等于 OpenAI API Key 或 API billing balance，登录 ChatGPT App 不会自动提供 API 凭据；参见 [OpenAI API Quick Start](https://developers.openai.com/api/docs/quickstart)。
+Native Anthropic / Claude API **not supported in 0.2.2**。通过兼容网关调用 Claude 可以尝试 Custom，但不保证所有网关兼容。ChatGPT Plus / Pro 订阅不等于 OpenAI API Key 或 API billing balance，登录 ChatGPT App 不会自动提供 API 凭据；参见 [OpenAI API Quick Start](https://developers.openai.com/api/docs/quickstart)。
 
 ## Supported Question Types / limitations
 
 完整回答协议支持 `single_choice`、`multiple_choice`、`true_false`。无字母选项不会生成 A/B/C/D。填空和简答只预留 Schema，尚未完整支持求解。
 
-不支持 OCR、原生 Anthropic、个人浏览器调试端口接管、自动点击/勾选/提交/下一题。扩展只读用户授权页面的当前可见语义题组；跨域 iframe、封闭 Shadow DOM、自绘控件、歧义题组可能需要 Vision。没有数据库、遥测或云账户。不宣称支持所有网站、所有 AI 模型或 100% accurate。0.2.1 提供 Windows x64 便携 EXE 与源码，不提供 MSI、PyPI 或独立 wheel 分发。
+不支持 OCR、原生 Anthropic、个人浏览器调试端口接管、自动点击/勾选/提交/下一题。扩展只读用户授权页面的当前可见语义题组；跨域 iframe、封闭 Shadow DOM、自绘控件、歧义题组可能需要 Vision。没有数据库、遥测或云账户。不宣称支持所有网站、所有 AI 模型或 100% accurate。0.2.2 提供 Windows x64 便携 EXE 与源码，不提供 MSI、PyPI 或独立 wheel 分发。
 
 ## Privacy and Security
 
@@ -356,13 +356,13 @@ Key 不进入普通 config、日志、repr 或仓库。不要上传真实 `.env`
 
 物理桌面另测 `.\.venv-win\Scripts\python.exe -X utf8 tests/smoke_browser_window.py -v`。关闭旧实例，测试窗口需获得前台；测试不会夺取其他用户窗口或读取真实屏幕像素。CI 不运行此可见 smoke；本地完整测试默认保留原生热键测试。
 
-[Development](docs/DEVELOPMENT.md) · [Technical Notes](docs/TECHNICAL_NOTES.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) · [Release Notes](docs/RELEASE_NOTES_0.2.1.md)
+[Development](docs/DEVELOPMENT.md) · [Technical Notes](docs/TECHNICAL_NOTES.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) · [Release Notes](docs/RELEASE_NOTES_0.2.2.md)
 
 ## License / publication state
 
 AutoQuestion 使用 **Apache License 2.0（Apache-2.0）**，完整条款见 [LICENSE](LICENSE)。
 
-**0.2.1 · Windows App 与源码。** 历史标签保持不变。Chrome / Edge Browser DOM 已实现，并有自动测试和本地合成页面测试覆盖；M15 发布前由用户明确决定跳过人工 GUI 验收，不代表所有真实网页均已人工验证。真实浏览器反馈作为非阻断跟进。
+**0.2.2 · Windows App 与源码。** 历史标签保持不变。Chrome / Edge Browser DOM 已实现，并有自动测试和本地合成页面测试覆盖；M15 发布前由用户明确决定跳过人工 GUI 验收，不代表所有真实网页均已人工验证。真实浏览器反馈作为非阻断跟进。
 
 [问题反馈](https://github.com/billstar0128-jpg/AutoQuestion/issues) · [Actions](https://github.com/billstar0128-jpg/AutoQuestion/actions/workflows/ci.yml) · [安全报告](https://github.com/billstar0128-jpg/AutoQuestion/security/advisories/new)
 

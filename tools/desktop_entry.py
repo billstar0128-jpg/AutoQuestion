@@ -10,15 +10,27 @@ def main():
     if len(sys.argv) == 3 and sys.argv[1] == '--self-test':
         from autoquestion.desktop_self_test import run
         return run(Path(sys.argv[2]))
+    if len(sys.argv) == 3 and sys.argv[1] == '--desktop-self-test':
+        from autoquestion.desktop_acceptance import run
+        return run(Path(sys.argv[2]))
+    from autoquestion.desktop_instance import DesktopInstanceError
     try:
         from autoquestion.web_ui import main as open_ui
         return open_ui()
+    except DesktopInstanceError as error:
+        import tkinter as tk
+        from tkinter import messagebox
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showerror('AutoQuestion', str(error), parent=root)
+        root.destroy()
+        return 1
     except Exception:
         import tkinter as tk
         from tkinter import messagebox
         root = tk.Tk()
         root.withdraw()
-        messagebox.showerror('AutoQuestion', '工作台未能启动。请完整解压下载包，保留 _internal 文件夹，再双击 AutoQuestion.exe。', parent=root)
+        messagebox.showerror('AutoQuestion', '工作台未能启动。请完整解压下载包，保留 _internal 文件夹，并检查 Microsoft Edge WebView2 Runtime。\n官方安装说明：https://developer.microsoft.com/microsoft-edge/webview2/', parent=root)
         root.destroy()
         return 1
 

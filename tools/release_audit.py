@@ -17,7 +17,7 @@ DIRECTORIES = {'src', 'tests', 'examples', 'docs', '.github', 'tools', 'extensio
 SUFFIXES = {'.py', '.js', '.html', '.css', '.md', '.txt', '.toml', '.yml', '.yaml'}
 IGNORED_DIRS = {'.git', '__pycache__', '.pytest_cache', '.venv', 'venv', '.idea', '.vscode',
                 'logs', 'screenshots', 'captures', 'build', 'dist', 'htmlcov', '.cache',
-                'AppData', 'user-data', 'browser-profile', '.local-browsers', 'ms-playwright', '.playwright'}
+                'AppData', 'user-data', 'browser-profile', '.local-browsers', 'ms-playwright', '.playwright', 'app测试'}
 IGNORED_FILES = {'legacy_main.py', '.coverage', 'coverage.xml', 'config.json'}
 IGNORE_RULES = {'.env', '.env.*', '!.env.example', '.venv/', '.venv-*/', '__pycache__/',
                 '*.py[cod]', '.pytest_cache/', '.coverage', 'htmlcov/', 'logs/', 'screenshots/',

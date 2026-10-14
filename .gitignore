@@ -40,3 +40,4 @@ ms-playwright/
 *.zip
 *.whl
 *.tar.gz
+app测试/

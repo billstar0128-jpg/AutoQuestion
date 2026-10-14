@@ -26,6 +26,14 @@ $env:PLAYWRIGHT_BROWSERS_PATH = '0'
 
 ## CI classification
 
+桌面 App 使用 pywebview / WebView2。默认套件用真实 Windows 消息窗口验证跨进程激活、互斥锁回收及服务关闭；不需要可见 WebView。交互桌面另外运行显式原生窗口验收：
+
+```powershell
+.\.venv-win\Scripts\python.exe tools/desktop_entry.py --desktop-self-test logs/native-check.json
+```
+
+该检查使用独立临时配置、实际 Windows 凭据中的合成 Key（结束后精确删除）、自己的 WM_HOTKEY 和 Fake 答案，验证重复启动及点击 × 的退出行为。不能与其他占用 F8/ESC 的测试或运行实例并行。冻结版本使用相同 `--desktop-self-test` 参数；不会测试真实收费 API。GUI 不进入 CI。
+
 AUTOQUESTION_CI=1 显式跳过 6 个交互桌面测试：Entrypoint 1、NativeHotkey 2、Reliability native lifecycle 1、Doctor held-hotkey 1、Web UI native lifecycle 1。其余单元测试、Mock Win32 Credential ABI、真实 headless Chromium、网页 UI、配置、secret、Router 和 Startup UX 都运行。可见 smoke 不进入 CI，无 WPS、物理 F8、真实 API 或真实凭据写入。
 
 本机全量回归不要设置此变量。模拟 CI 时设置后运行相同 pytest/unittest，完成后移除。工作流使用临时 APPDATA、只读权限、不需要 API Secret、不上传 artifacts。当前 GitHub Actions 结果见 [M15 validation](VALIDATION_M15.md)，历史结果见 [M14 validation](VALIDATION_M14.md)。
