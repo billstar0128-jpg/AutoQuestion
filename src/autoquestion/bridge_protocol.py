@@ -53,14 +53,19 @@ def decode_message(raw):
             if obj.get('status') not in ('ok', 'unavailable', 'changed', 'unchanged'):
                 raise ProtocolError()
             if obj['status'] == 'ok':
-                fields.add('question')
-                q = obj.get('question')
-                if (not isinstance(q, dict) or set(q) != {'kind', 'stem', 'options'}
+                # Older extensions send one question; newer builds send a bounded batch.
+                key = 'questions' if 'questions' in obj else 'question'
+                fields.add(key)
+                questions = obj.get(key) if key == 'questions' else [obj.get(key)]
+                if not isinstance(questions, list) or not 1 <= len(questions) <= 10:
+                    raise ProtocolError()
+                for q in questions:
+                    if (not isinstance(q, dict) or set(q) != {'kind', 'stem', 'options'}
                         or q['kind'] not in ('radio', 'checkbox')
                         or not isinstance(q['stem'], str) or not 1 <= len(q['stem']) <= 8000
                         or not isinstance(q['options'], list) or not 2 <= len(q['options']) <= 50
                         or any(not isinstance(o, str) or not 1 <= len(o) <= 2000 for o in q['options'])):
-                    raise ProtocolError()
+                        raise ProtocolError()
         elif kind != 'pong':
             raise ProtocolError()
         if set(obj) != fields:

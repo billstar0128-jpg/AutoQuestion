@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta
       name="description"
-      content="下载 AutoQuestion Windows App。解压、双击、配置你的模型，题目放到前台后按 F8。"
+      content="下载 AutoQuestion Windows App 和 Android 悬浮识题 App，同屏多道题分别给出答案。"
     />
-    <title>AutoQuestion · 下载 Windows App</title>
+    <title>AutoQuestion · 下载 App</title>
     <link rel="stylesheet" href="download.css" />
   </head>
   <body>
@@ -23,7 +23,7 @@
     <main>
       <section class="hero">
         <div>
-          <span class="eyebrow">WINDOWS APP · v@@VERSION@@</span>
+          <span class="eyebrow">WINDOWS + ANDROID · v@@VERSION@@</span>
           <h1>题目在屏幕上。<br />答案，在一个 <em>F8</em> 之后。</h1>
           <p>
             下载到电脑，双击打开。<br />在本机界面配置模型、启动答题、查看结果。
@@ -33,8 +33,12 @@
             href="https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v@@VERSION@@/AutoQuestion-@@VERSION@@-Windows-x64.zip"
             >下载 Windows App <span>↓</span></a
           >
+          <a
+            class="button"
+            href="https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v@@VERSION@@/AutoQuestion-@@VERSION@@-Android.apk"
+            >下载 Android APK <span>↓</span></a>
           <div class="download-note">
-            Windows 10 / 11 · x64 · 无需 Python / PowerShell
+            Windows 10 / 11 x64 · Android 8.0+ · 同屏最多 10 道完整题
           </div>
         </div>
         <div class="app-window" aria-label="App 界面示意">
@@ -53,6 +57,14 @@
             </div>
           </div>
         </div>
+      </section>
+      <section id="android">
+        <span class="eyebrow">ANDROID FLOATING APP</span>
+        <h2>手机上，一个小方框就够。</h2>
+        <p>安装 APK，配置支持图片的模型，允许悬浮窗和系统屏幕共享。把小方框拖到左上角，点击识题，分别查看同屏各题答案。截图只在内存中处理，不写入相册。</p>
+        <p>停止请使用通知或 App 内的停止入口。系统禁止捕获的页面可能黑屏；小米手机权限按实际系统提示开启。</p>
+        <a href="https://github.com/billstar0128-jpg/AutoQuestion/blob/main/docs/ANDROID.md">手机安装与操作说明 ↗</a>
+        <p><a href="try-questions.html">打开六道混合练习题，试一次识别 ↗</a></p>
       </section>
       <div class="important">
         <strong>这是 App 下载页。</strong> API Key 和实际答题在下载后的本机 App

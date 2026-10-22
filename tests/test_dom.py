@@ -16,7 +16,7 @@ from autoquestion.config import Config, load_config
 from autoquestion.dom import make_dom_callback
 from autoquestion.llm.base import LLMProviderError
 from autoquestion.llm.fake import FakeLLMProvider, demo_question
-from autoquestion.schemas import SourceType
+from autoquestion.schemas import AnswerResult, QuestionType, SourceType
 from test_llm import config, completion
 
 
@@ -46,6 +46,53 @@ class DOMWorkflowTests(unittest.TestCase):
             if expected != '答案：正确':
                 browser._call(lambda: browser._adapter.page.get_by_role('button', name='下一题').click())
 
+    def test_real_two_question_demo_yields_independent_answers_without_clicking_options(self):
+        browser = BrowserSession(headless=True)
+        self.addCleanup(browser.close)
+        browser.start()
+        browser._call(lambda: browser._adapter.page.set_viewport_size({'width': 1000, 'height': 800}))
+        browser._call(lambda: browser._adapter.page.locator('#multi').click())
+        callback = make_dom_callback(Config(input_mode='dom'), browser, Mock())
+        with self.assertLogs('autoquestion', level='INFO') as logs:
+            callback(threading.Event())
+        results = [record.question_results for record in logs.records if hasattr(record, 'question_results')]
+        self.assertEqual(len(results), 1)
+        self.assertEqual([r['answer']['question_type'] for r in results[0]], ['single_choice', 'multiple_choice'])
+        self.assertEqual(results[0][0]['answer']['selected_text'], '巴黎')
+        self.assertEqual(results[0][1]['answer']['selected_texts'], ['Python', 'C', 'Java'])
+        self.assertEqual(browser._call(lambda: browser._adapter.page.locator(':checked').count()), 0)
+
+    def test_real_six_question_dom_with_stub_provider_publishes_six_matched_answers(self):
+        browser = BrowserSession(headless=True)
+        self.addCleanup(browser.close)
+        browser.start()
+        fixture = Path(__file__).resolve().parents[1] / 'examples/browser_dom/mixed_questions.html'
+        content = fixture.read_text(encoding='utf-8')
+        browser._call(lambda: browser._adapter.page.set_viewport_size({'width': 1200, 'height': 900}))
+        browser._call(lambda: browser._adapter.page.set_content(content))
+        def answer(question):
+            chosen = question.options[:2] if question.question_type == QuestionType.MULTIPLE_CHOICE else question.options[:1]
+            fields = dict(question_type=question.question_type, confidence=0.99, short_reason='合成协议验证答案。')
+            if question.question_type == QuestionType.MULTIPLE_CHOICE:
+                fields.update(selected_indices=tuple(o.index for o in chosen), selected_labels=tuple(o.label for o in chosen),
+                              selected_texts=tuple(o.text for o in chosen))
+            else:
+                fields.update(selected_index=chosen[0].index, selected_label=chosen[0].label, selected_text=chosen[0].text)
+            return AnswerResult(**fields)
+        provider = Mock()
+        provider.answer_question.side_effect = answer
+        with patch('autoquestion.dom.FakeLLMProvider', return_value=provider), self.assertLogs('autoquestion') as logs:
+            make_dom_callback(Config(input_mode='dom'), browser, Mock())(threading.Event())
+        results = [record.question_results for record in logs.records if hasattr(record, 'question_results')]
+        self.assertEqual(len(results), 1)
+        self.assertEqual(len(results[0]), 6)
+        self.assertEqual(provider.answer_question.call_count, 6)
+        self.assertEqual([r['answer']['question_type'] for r in results[0]],
+                         ['single_choice', 'multiple_choice', 'true_false'] * 2)
+        self.assertEqual([r['answer']['selected_text'] or r['answer']['selected_texts'] for r in results[0]],
+                         ['巴黎', ['Python', 'Java'], '正确', '木星', ['2', '3'], '正确'])
+        self.assertEqual(browser._call(lambda: browser._adapter.page.locator(':checked').count()), 0)
+
     def test_extraction_and_provider_failures_recover_without_vision(self):
         question = demo_question().model_copy(update={'source_type': SourceType.DOM})
         browser = Mock()
@@ -69,7 +116,7 @@ class DOMWorkflowTests(unittest.TestCase):
     def test_busy_and_stop_do_not_start_second_extraction_or_provider(self):
         entered, release = threading.Event(), threading.Event()
         browser = Mock()
-        def extract():
+        def extract(*, all_questions=False):
             entered.set()
             release.wait(5)
             return demo_question().model_copy(update={'source_type': SourceType.DOM})

@@ -24,7 +24,7 @@ class UserConfig(BaseModel):
     model: str = Field(default='', repr=False, max_length=256)
     supports_vision: bool = False
     input_mode: str = 'auto'
-    timeout_seconds: float = 30.0
+    timeout_seconds: float = Field(default=180.0, ge=1, le=300, allow_inf_nan=False)
     image_max_edge: int = 2048
     credential_mode: str = 'session'
     credential_id: str = Field(default='', repr=False)

@@ -56,11 +56,10 @@ class ExtensionTests(unittest.TestCase):
                 if name == 'no_labels':
                     self.assertTrue(all(o.label is None for o in question.options))
 
-    def test_canvas_empty_multiple_questions_and_hidden(self):
+    def test_canvas_empty_questions_and_hidden(self):
         self.page.goto((ROOT / 'examples/browser_dom/canvas_question.html').as_uri())
         self.assertEqual(self.read()['status'], 'unavailable')
-        for body in ('<h1>No question</h1>', '<fieldset hidden><legend>Hidden?</legend><label><input type=radio>A</label><label><input type=radio>B</label></fieldset>',
-                     '<fieldset><legend>Q?</legend><label><input type=radio>A</label><label><input type=radio>B</label></fieldset>' * 2):
+        for body in ('<h1>No question</h1>', '<fieldset hidden><legend>Hidden?</legend><label><input type=radio>A</label><label><input type=radio>B</label></fieldset>'):
             self.page.set_content(body)
             self.assertEqual(self.read()['status'], 'unavailable')
 
@@ -92,6 +91,45 @@ class ExtensionTests(unittest.TestCase):
         self.page.set_content('<fieldset><legend>All options required?</legend>'
                               '<label><input type=radio name=x>A</label><label><input type=radio name=x>B</label>'
                               '<label style="display:block;margin-top:2000px"><input type=radio name=x>C</label></fieldset>')
+        self.assertEqual(self.read()['status'], 'unavailable')
+
+    def test_batch_keeps_independent_questions_and_screen_order(self):
+        self.page.set_content('<fieldset><legend>Single?</legend><label><input type=radio name=q>A. One</label>'
+                              '<label><input type=radio name=q>B. Two</label></fieldset>'
+                              '<fieldset><legend>Multiple?</legend><label><input type=checkbox>C. Three</label>'
+                              '<label><input type=checkbox>D. Four</label></fieldset>')
+        self.page.locator('input[type=checkbox]').first.focus()
+        result = self.read()
+        self.assertEqual(result['status'], 'ok')
+        self.assertNotIn('question', result)
+        self.assertEqual([q['stem'] for q in result['questions']], ['Single?', 'Multiple?'])
+        self.assertEqual([q['kind'] for q in result['questions']], ['radio', 'checkbox'])
+        self.assertEqual([q['options'] for q in result['questions']], [['A. One', 'B. Two'], ['C. Three', 'D. Four']])
+        self.assertEqual(self.page.locator(':checked').count(), 0)
+
+    def test_six_visible_mixed_questions_keep_all_boundaries_without_selection(self):
+        self.page.goto((ROOT / 'examples/browser_dom/mixed_questions.html').as_uri())
+        self.page.locator('input[name=boiling]').first.focus()
+        result = self.read()
+        self.assertEqual(result['status'], 'ok')
+        questions = [question_from_dom(dict(question_text=q['stem'], kind=q['kind'], options=q['options']))
+                     for q in result['questions']]
+        self.assertEqual([q.question_type.value for q in questions],
+                         ['single_choice', 'multiple_choice', 'true_false'] * 2)
+        self.assertEqual([q.question_text.split('.')[0] for q in questions], ['1', '2', '3', '4', '5', '6'])
+        self.assertEqual([[o.text for o in q.options] for q in questions],
+                         [['巴黎', '伦敦', '柏林'], ['Python', 'Java', 'HTML'], ['正确', '错误'],
+                          ['木星', '地球', '火星'], ['2', '3', '4'], ['正确', '错误']])
+        self.assertEqual(self.page.locator(':checked').count(), 0)
+
+    def test_batch_limits_and_shared_mixed_container_fail_closed(self):
+        self.page.set_content('<fieldset><legend>Mixed?</legend><label><input type=radio name=q>A</label>'
+                              '<label><input type=radio name=q>B</label><label><input type=checkbox>C</label>'
+                              '<label><input type=checkbox>D</label></fieldset>')
+        self.assertEqual(self.read()['status'], 'unavailable')
+        self.page.set_content('<style>fieldset{height:22px;padding:0;border:0}legend{float:left}label{font-size:10px}</style>' +
+                              ''.join(f'<fieldset><legend>Q{i}?</legend><label><input type=radio name=q{i}>A</label>'
+                                      f'<label><input type=radio name=q{i}>B</label></fieldset>' for i in range(11)))
         self.assertEqual(self.read()['status'], 'unavailable')
 
     def test_same_origin_frame_and_closed_shadow_unavailable(self):

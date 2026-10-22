@@ -65,6 +65,23 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(results[0].question_type.value, 'true_false')
         self.assertEqual(verify.call_count, 2)
 
+    def test_batch_roundtrip_preserves_question_boundaries(self):
+        client = self.ready()
+        verify, results = Mock(), []
+        worker = threading.Thread(target=lambda: results.append(self.bridge.extract_for_target(
+            self.target, verify, self.bridge.pin(self.target), all_questions=True)))
+        worker.start()
+        request = json.loads(client.recv(timeout=2))
+        client.send(json.dumps(dict(v=1, type='result', request=request['request'], status='ok', questions=[
+            dict(kind='radio', stem='Single?', options=['A. One', 'B. Two']),
+            dict(kind='checkbox', stem='Multiple?', options=['Three', 'Four'])])))
+        worker.join(2)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual([q.question_text for q in results[0]], ['Single?', 'Multiple?'])
+        self.assertEqual([q.question_type.value for q in results[0]], ['single_choice', 'multiple_choice'])
+        self.assertEqual([[o.text for o in q.options] for q in results[0]], [['One', 'Two'], ['Three', 'Four']])
+        self.assertEqual(verify.call_count, 2)
+
     def test_invalid_token_and_invalid_origin(self):
         with self.assertRaises(ConnectionClosed):
             self.client('x' * 32).recv(timeout=2)

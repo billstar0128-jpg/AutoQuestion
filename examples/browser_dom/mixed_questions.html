@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutoQuestion · 同屏六道混合练习题</title>
+  <style>
+    :root { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; color: #27213b; background: #f5f3fa; }
+    body { margin: 0; padding: 20px; }
+    main { max-width: 940px; margin: auto; }
+    h1 { margin: 0 0 8px; font-size: 24px; }
+    p { margin: 0 0 16px; font-size: 14px; line-height: 1.5; }
+    .questions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    fieldset { min-width: 0; margin: 0; padding: 10px 14px 12px; border: 1px solid #d9d0ef; border-radius: 12px; background: white; }
+    legend { max-width: 100%; padding: 0 5px; font-size: 16px; font-weight: 600; }
+    label { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; }
+    input { margin: 0; width: 16px; height: 16px; accent-color: #7860d8; }
+    @media (max-width: 600px) {
+      body { padding: 12px; }
+      h1 { font-size: 20px; }
+      .questions { gap: 8px; }
+      fieldset { padding: 7px 8px 9px; }
+      legend { font-size: 14px; }
+      label { font-size: 13px; gap: 5px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>同屏六道混合练习题</h1>
+    <p>单选、多选、判断各两道。将全部题干和选项放在屏幕内，按 F8 分别分析；手机端轻点 AQ。此页面不计分、不提交、不联网。</p>
+    <div class="questions">
+      <fieldset>
+        <legend>1. 法国的首都是哪里？</legend>
+        <label><input type="radio" name="capital">A. 巴黎</label>
+        <label><input type="radio" name="capital">B. 伦敦</label>
+        <label><input type="radio" name="capital">C. 柏林</label>
+      </fieldset>
+      <fieldset>
+        <legend>2. 以下哪些属于编程语言？</legend>
+        <label><input type="checkbox" name="languages">A. Python</label>
+        <label><input type="checkbox" name="languages">B. Java</label>
+        <label><input type="checkbox" name="languages">C. HTML</label>
+      </fieldset>
+      <fieldset>
+        <legend>3. 地球绕太阳公转。</legend>
+        <label><input type="radio" name="orbit">A. 正确</label>
+        <label><input type="radio" name="orbit">B. 错误</label>
+      </fieldset>
+      <fieldset>
+        <legend>4. 太阳系中最大的行星是？</legend>
+        <label><input type="radio" name="planet">A. 木星</label>
+        <label><input type="radio" name="planet">B. 地球</label>
+        <label><input type="radio" name="planet">C. 火星</label>
+      </fieldset>
+      <fieldset>
+        <legend>5. 以下哪些是质数？</legend>
+        <label><input type="checkbox" name="primes">A. 2</label>
+        <label><input type="checkbox" name="primes">B. 3</label>
+        <label><input type="checkbox" name="primes">C. 4</label>
+      </fieldset>
+      <fieldset>
+        <legend>6. 标准大气压下，水的沸点为 100℃。</legend>
+        <label><input type="radio" name="boiling">A. 正确</label>
+        <label><input type="radio" name="boiling">B. 错误</label>
+      </fieldset>
+    </div>
+  </main>
+</body>
+</html>

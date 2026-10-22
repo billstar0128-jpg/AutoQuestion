@@ -45,7 +45,11 @@ Provider Profile (brand / editable defaults)
     → API request / offline answer
 ```
 
-注册表与适配器分离。真实请求是 Chat Completions，使用官方 OpenAI Python SDK 的 base_url；Text 与 Vision 共用错误处理、有限 JSON 解析与一致性验证。Vision 一次请求同时返回 Question 与 Answer，不追加文本请求。Model supports_vision 是本次模型配置，不是品牌属性。
+注册表与适配器分离。真实请求是 Chat Completions，使用官方 OpenAI Python SDK 的 base_url；Text 与 Vision 共用错误处理、有限 JSON 解析与一致性验证。Vision 一次图片请求返回 1～10 个独立 Question/Answer（results 数组），不追加文本请求；兼容旧单题对象。DOM 分别调用 Text Provider，全部验证后一次发布，失败不再转 Vision。Model supports_vision 是本次模型配置，不是品牌属性。
+
+## Android
+
+原生 Java App 使用独立的 HTTPS Chat Completions 客户端，共用同屏多题 JSON 协议，不依赖 Windows 服务。MediaProjection 与 mediaProjection 类型前台服务持有一份捕获会话，悬浮按钮点击后才编码一帧并请求。Android Keystore 保存加密密钥，截图和答案只在内存中。服务停止时释放悬浮窗、VirtualDisplay、ImageReader、MediaProjection 和请求。完整操作与系统限制见 [Android](ANDROID.md)。
 
 ## Configuration and secrets
 

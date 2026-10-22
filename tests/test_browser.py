@@ -141,6 +141,55 @@ class BrowserDOMTests(unittest.TestCase):
         self.assertEqual(self.adapter.extract_question().question_text, '题二')
         self.assertEqual(self.page.locator('input:checked').count(), 0)
 
+    def test_batch_reads_single_and_multiple_separately_even_when_one_has_focus(self):
+        self.page.set_content('''<fieldset><legend>题一</legend><label><input type="radio" name="one">A. 甲</label><label><input type="radio" name="one">B. 乙</label></fieldset>
+        <fieldset><legend>题二</legend><label><input type="checkbox" name="two">丙</label><label><input type="checkbox" name="two">丁</label></fieldset>''')
+        self.page.locator('input[name=two]').first.focus()
+        questions = self.adapter.extract_questions()
+        self.assertEqual([q.question_text for q in questions], ['题一', '题二'])
+        self.assertEqual([q.question_type.value for q in questions], ['single_choice', 'multiple_choice'])
+        self.assertEqual([[o.text for o in q.options] for q in questions], [['甲', '乙'], ['丙', '丁']])
+        self.assertEqual(self.page.locator('input:checked').count(), 0)
+
+    def test_six_visible_mixed_questions_preserve_each_type_stem_and_options(self):
+        fixture = Path(__file__).resolve().parents[1] / 'examples/browser_dom/mixed_questions.html'
+        self.page.set_viewport_size({'width': 1200, 'height': 900})
+        self.page.set_content(fixture.read_text(encoding='utf-8'))
+        self.page.locator('input[name=boiling]').first.focus()
+        questions = self.adapter.extract_questions()
+        self.assertEqual(len(questions), 6)
+        self.assertEqual([q.question_type.value for q in questions],
+                         ['single_choice', 'multiple_choice', 'true_false'] * 2)
+        self.assertEqual([q.question_text.split('.')[0] for q in questions], ['1', '2', '3', '4', '5', '6'])
+        self.assertEqual([[o.text for o in q.options] for q in questions],
+                         [['巴黎', '伦敦', '柏林'], ['Python', 'Java', 'HTML'], ['正确', '错误'],
+                          ['木星', '地球', '火星'], ['2', '3', '4'], ['正确', '错误']])
+        self.assertEqual(self.page.locator('input:checked').count(), 0)
+
+    def test_batch_rejects_incomplete_mixed_container_and_more_than_ten(self):
+        bodies = [
+            '<fieldset><legend>Mixed?</legend><label><input type=radio name=x>A</label><label><input type=radio name=x>B</label>'
+            '<label><input type=checkbox>C</label><label><input type=checkbox>D</label></fieldset>',
+            '<fieldset><legend>Partly visible?</legend><label><input type=radio name=x>A</label>'
+            '<label style="display:block;margin-top:2000px"><input type=radio name=x>B</label></fieldset>',
+            '<fieldset aria-label="Clipped stem?"><legend style="position:absolute;top:-200px">Clipped stem?</legend>'
+            '<label><input type=radio name=x>A</label><label><input type=radio name=x>B</label></fieldset>',
+            '<fieldset><legend>Clipped option?</legend><label style="position:relative"><input type=radio name=x>'
+            '<span style="position:absolute;top:2000px">A</span></label><label><input type=radio name=x>B</label></fieldset>',
+            '<style>fieldset{height:22px;padding:0;border:0} legend{float:left} label{font-size:10px}</style>' +
+            ''.join(f'<fieldset><legend>Q{i}?</legend><label><input type=radio name=q{i}>A</label><label><input type=radio name=q{i}>B</label></fieldset>' for i in range(11)),
+        ]
+        for body in bodies:
+            with self.subTest(body=body[:40]):
+                self.page.set_content(body)
+                with self.assertRaises(BrowserExtractionError):
+                    self.adapter.extract_questions()
+
+    def test_offscreen_questions_not_read_and_reordered_screen_order(self):
+        self.page.set_content('''<fieldset><legend>Visible?</legend><label><input type=radio name=q>A</label><label><input type=radio name=q>B</label></fieldset>
+        <fieldset style="margin-top:2000px"><legend>Outside viewport</legend><label><input type=radio name=x>C</label><label><input type=radio name=x>D</label></fieldset>''')
+        self.assertEqual([q.question_text for q in self.adapter.extract_questions()], ['Visible?'])
+
     def test_absent_incomplete_and_conflicting_questions(self):
         for html in ('<p>没有题目</p>', '<input type=password value=private-value>',
                      '<fieldset><label><input type=radio name=q>甲</label><label><input type=radio name=q>乙</label></fieldset>',

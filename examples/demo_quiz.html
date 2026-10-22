@@ -19,13 +19,18 @@
     button:disabled { opacity: .4; cursor: default; }
     :focus-visible { outline: 3px solid #dc9b2f; outline-offset: 3px; }
     [hidden] { display: none !important; }
+    body.multiple { padding: 16px; }
+    body.multiple main { max-width: 900px; padding: 20px; }
+    body.multiple fieldset { margin: 14px 0; padding: 10px 16px; }
+    body.multiple legend { font-size: 18px; }
+    body.multiple label { padding: 5px 10px; margin: 3px 0; font-size: 17px; }
     small { display: block; margin-top: 24px; color: #526778; }
   </style>
 </head>
 <body>
   <main>
     <h1>AutoQuestion 本地练习</h1>
-    <p>每次显示一道题。使用下方按钮手动切换，按 F8 分析当前题目。此页面不计分、不提交、不联网。</p>
+    <p>使用下方按钮手动切换，或打开同屏多题练习，按 F8 分别分析完整可见的题目。此页面不计分、不提交、不联网。</p>
     <fieldset data-question-id="capital" data-question-type="single_choice">
       <legend>法国的首都是哪里？</legend>
       <label><input type="radio" name="capital" value="paris">A. 巴黎</label>
@@ -59,11 +64,13 @@
     </nav>
     <small>支持单选、多选和判断题分析；答案显示在控制台。选项只能由你手动选择。</small>
     <p><a href="demo_canvas_quiz.html">打开 Canvas 测试题</a></p>
+    <button id="multi" type="button">同屏两道题：单选 + 多选</button>
   </main>
   <script>
     const questions = Array.from(document.querySelectorAll('fieldset'));
     let current = 0;
     function showQuestion(index) {
+      document.body.classList.remove('multiple');
       current = Math.max(0, Math.min(questions.length - 1, index));
       questions.forEach((question, i) => { question.hidden = i !== current; });
       document.getElementById('progress').textContent = `第 ${current + 1} / ${questions.length} 题`;
@@ -72,6 +79,14 @@
     }
     document.getElementById('previous').addEventListener('click', () => showQuestion(current - 1));
     document.getElementById('next').addEventListener('click', () => showQuestion(current + 1));
+    document.getElementById('multi').addEventListener('click', () => {
+      document.body.classList.add('multiple');
+      questions.forEach((question, i) => { question.hidden = i !== 0 && i !== 2; });
+      document.getElementById('progress').textContent = '同屏 2 题 · 单选 + 多选';
+      document.getElementById('previous').disabled = false;
+      document.getElementById('next').disabled = false;
+      window.scrollTo(0, 0);
+    });
   </script>
 </body>
 </html>

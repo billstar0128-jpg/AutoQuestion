@@ -102,7 +102,7 @@ VisionAnalysisResult 结构：
 }
 ```
 
-Vision 强制 source_type=VISION，index 按视觉顺序从 0 连续编号，复用严格 label/text/index 一致性校验。图中圆圈不视为字母标签。Prompt 只选择主要、完整的一道单选、多选或判断题；无法可靠识别时返回固定错误协议，程序提示调整窗口后重试。结构一致并不证明图片识别和知识答案正确，需人工核对。
+Vision 强制 source_type=VISION，index 按视觉顺序从 0 连续编号，复用严格 label/text/index 一致性校验。图中圆圈不视为字母标签。0.3.0 Prompt 按屏幕阅读顺序返回所有完整可见的单选、多选或判断题，最多 10 道，顶层 results 数组每项独立包含 question/answer；旧单题响应继续兼容。整批校验通过后原子发布，任一题答案矛盾会拒绝整批；没有完整可读题时返回固定错误。结构一致并不证明图片识别和知识答案正确，需人工核对。
 
 `vision.py` 串联截图与 Provider；`supports_vision=false` 在截图与请求前报错。BUSY 时不会记录新的目标、截图或并发发请求。ESC 阻止新任务；已经进行的同步 API 请求需等待完成/超时，随后丢弃待显示答案并清理退出。
 

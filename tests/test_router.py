@@ -17,7 +17,7 @@ from autoquestion.dom import answer_dom_question
 from autoquestion.llm.base import BaseLLMProvider, LLMProviderError, LLMResponseParseError
 from autoquestion.llm.fake import FakeLLMProvider, demo_question
 from autoquestion.router import InputRouter
-from autoquestion.schemas import AnswerValidationError, SourceType, VisionAnalysisResult
+from autoquestion.schemas import AnswerValidationError, SourceType, VisionAnalysisResult, Question, Option
 from autoquestion.vision import VisionWorkflow
 from test_capture import synthetic_image
 from test_vision import vision_payload
@@ -54,6 +54,7 @@ class RouterTests(unittest.TestCase):
             self.runner._worker.join(10)
             self.assertFalse(self.runner._worker.is_alive())
         self.assertEqual(self.runner.state, Status.READY)
+        self.last_records = logs.records
         text = '\n'.join(logs.output)
         self.assertNotIn('PRIVATE_TITLE', text)
         return text
@@ -69,6 +70,39 @@ class RouterTests(unittest.TestCase):
         self.assertNotIn('CAPTURING', text)
         self.assert_no_vision()
         self.provider.answer_question.assert_called_once_with(self.question)
+
+    def multiple_question(self):
+        return Question(question_text='以下哪些属于编程语言？', question_type='multiple_choice', source_type='DOM',
+                        options=[Option(index=i, text=t) for i, t in enumerate(['Python', 'C', 'HTML', 'Java'])])
+
+    def test_batch_validates_separate_answers_before_publishing_one_ordered_result(self):
+        second = self.multiple_question()
+        self.browser.extract_for_target.return_value = (self.question, second)
+        self.provider.answer_question.side_effect = FakeLLMProvider().answer_question
+        text = self.run_job()
+        records = [record.question_results for record in self.last_records if hasattr(record, 'question_results')]
+        self.assertIn('第 1 题', text)
+        self.assertIn('第 2 题', text)
+        self.assertIn('答案：A', text)
+        self.assertIn('答案：Python、C、Java', text)
+        self.assertEqual(len(records), 1)
+        self.assertEqual([result['question']['question_text'] for result in records[0]],
+                         [self.question.question_text, second.question_text])
+        self.assertEqual(self.provider.answer_question.call_count, 2)
+        self.assert_no_vision()
+
+    def test_second_answer_failure_does_not_publish_partial_batch_or_fallback(self):
+        self.browser.extract_for_target.return_value = (self.question, self.multiple_question())
+        self.provider.answer_question.side_effect = [self.provider.answer_question.return_value, LLMProviderError('timeout')]
+        text = self.run_job()
+        self.assertIn('Status: ERROR', text)
+        self.assertNotIn('答案：', text)
+        self.assert_no_vision()
+
+    def test_invalid_second_question_cancels_whole_batch_before_provider(self):
+        self.browser.extract_for_target.return_value = (self.question, self.multiple_question().model_copy(update={'options': ()}))
+        self.assertIn('Fallback: VISION', self.run_job())
+        self.provider.answer_question.assert_not_called()
 
     def test_non_browser_never_reads_background_dom(self):
         self.browser.owns_target.return_value = False
@@ -301,6 +335,16 @@ class BrowserRoutingTests(unittest.TestCase):
                 self.browser.extract_for_target(self.target, verify)
             self.browser._call(lambda: self.browser._adapter.page.goto(DEMO_PATH.as_uri()))
             self.assertEqual(self.browser.extract_for_target(self.target, verify).source_type, SourceType.DOM)
+
+    def test_managed_multiscreen_demo_has_independent_single_and_multiple_questions(self):
+        self.browser._call(lambda: self.browser._adapter.page.set_viewport_size({'width': 1000, 'height': 800}))
+        self.browser._call(lambda: self.browser._adapter.page.locator('#multi').click())
+        with patch('autoquestion.browser_session.WindowsWindowAPI') as windows:
+            windows.return_value.browser_windows.return_value = [123]
+            questions = self.browser.extract_for_target(self.target, Mock(), all_questions=True)
+        self.assertEqual([q.question_type.value for q in questions], ['single_choice', 'multiple_choice'])
+        self.assertEqual([q.question_text for q in questions], ['法国的首都是哪里？', '以下哪些属于编程语言？'])
+        self.assertEqual(self.browser._call(lambda: self.browser._adapter.page.locator(':checked').count()), 0)
 
     def test_multiple_windows_or_tabs_reject_before_extraction(self):
         with patch('autoquestion.browser_session.WindowsWindowAPI') as windows, \

@@ -19,6 +19,9 @@ class ProtocolTests(unittest.TestCase):
             dict(v=VERSION, type='result', request='a' * 32, status='changed'),
             dict(v=VERSION, type='result', request='a' * 32, status='ok',
                  question=dict(kind='radio', stem='Synthetic question?', options=['Yes', 'No'])),
+            dict(v=VERSION, type='result', request='a' * 32, status='ok', questions=[
+                dict(kind='radio', stem='Single?', options=['One', 'Two']),
+                dict(kind='checkbox', stem='Multiple?', options=['Three', 'Four'])]),
         ]:
             with self.subTest(kind=message['type']):
                 self.assertEqual(decode_message(encode_message(message)), message)
@@ -36,6 +39,17 @@ class ProtocolTests(unittest.TestCase):
                 with self.assertRaises(ProtocolError) as raised:
                     decode_message(raw)
                 self.assertNotIn(private, str(raised.exception))
+
+    def test_batch_bounds_and_each_question_validated(self):
+        question = dict(kind='radio', stem='Synthetic?', options=['One', 'Two'])
+        for values in ([], [question] * 11, [question, {'html': 'synthetic-private'}], 'invalid'):
+            with self.subTest(values=type(values)):
+                message = dict(v=VERSION, type='result', request='a' * 32, status='ok', questions=values)
+                with self.assertRaises(ProtocolError):
+                    decode_message(encode_message(message))
+        with self.assertRaises(ProtocolError):
+            decode_message(encode_message(dict(v=VERSION, type='result', request='a' * 32,
+                                               status='ok', question=question, questions=[question])))
 
 
 if __name__ == '__main__':

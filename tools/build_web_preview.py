@@ -15,6 +15,7 @@ def build(destination=None):
     destination.mkdir(parents=True, exist_ok=True)
     (destination / 'index.html').write_text((ROOT / 'src/autoquestion/web/download.html').read_text(encoding='utf-8').replace('@@VERSION@@', __version__), encoding='utf-8')
     shutil.copyfile(ROOT / 'src/autoquestion/web/download.css', destination / 'download.css')
+    shutil.copyfile(ROOT / 'examples/browser_dom/mixed_questions.html', destination / 'try-questions.html')
     preview = destination / 'preview'
     preview.mkdir(exist_ok=True)
     for name in ('index.html', 'app.js', 'style.css'):

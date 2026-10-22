@@ -9,7 +9,7 @@ import time
 
 from .bridge_protocol import VERSION, PORT, MAX_BYTES, ProtocolError, decode_message, encode_message
 from .browser_identity import ProcessIdentity, browser_peer
-from .capture.browser import BrowserExtractionError, question_from_dom
+from .capture.browser import BrowserExtractionError, question_from_dom, validated_dom_questions
 from .capture.screen import CaptureError
 
 LOGGER = logging.getLogger('autoquestion')
@@ -131,14 +131,21 @@ class BrowserBridge:
                        and s.state is not None and s.state[1] >= 0]
             return BrowserPin(matches[0], matches[0].state) if len(matches) == 1 else None
 
-    def extract_for_target(self, target, verify, pin):
+    def extract_for_target(self, target, verify, pin, *, all_questions=False):
         verify()
         reply = self._request(pin, 'extract')
         if reply['status'] != 'ok':
             raise BrowserExtractionError('Browser DOM unavailable: permission or readable question missing.')
         verify()
-        data = reply['question']
-        return question_from_dom(dict(kind=data['kind'], question_text=data['stem'], options=data['options']))
+        values = reply.get('questions', [reply.get('question')])
+        questions = validated_dom_questions(tuple(
+            question_from_dom(dict(kind=data['kind'], question_text=data['stem'], options=data['options']))
+            for data in values))
+        if all_questions:
+            return questions
+        if len(questions) != 1:
+            raise BrowserExtractionError('页面有多个完整题组，请使用多题读取。')
+        return questions[0]
 
     def verify_pin(self, pin):
         """Metadata-only round trip, also used around fallback pixels. Fail closed on disconnect."""

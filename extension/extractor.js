@@ -31,8 +31,11 @@
       if (!parent || parent.closest(blocked) || !visible(parent, clip)) continue;
       // Text fragments outside the viewport are excluded even when their container is large.
       const range = element.ownerDocument.createRange(); range.selectNodeContents(node);
-      if (![...range.getClientRects()].some(r => r.bottom > clip.top && r.top < clip.bottom &&
+      const rects = [...range.getClientRects()];
+      if (!rects.some(r => r.bottom > clip.top && r.top < clip.bottom &&
           r.right > clip.left && r.left < clip.right)) continue;
+      if (node.textContent.trim() && rects.some(r => r.top < clip.top || r.left < clip.left ||
+          r.bottom > clip.bottom || r.right > clip.right)) { uncertain = true; return ''; }
       parts.push(node.textContent);
       if (parts.join('').length > 8000) throw new Error('text budget');
     }
@@ -59,7 +62,7 @@
     }
     return null;
   }
-  function inspect(root, clip, depth = 0) {
+  function inspect(root, clip, depth = 0, offset = {left: 0, top: 0}) {
     if (depth > 3) { uncertain = true; return; }
     const elements = root.querySelectorAll('*');
     if (elements.length > 3000) throw new Error('node budget');
@@ -67,7 +70,7 @@
     for (const element of elements) {
       spend();
       if (!visible(element, clip)) continue;
-      if (element.shadowRoot) inspect(element.shadowRoot, clip, depth + 1);
+      if (element.shadowRoot) inspect(element.shadowRoot, clip, depth + 1, offset);
       if (element.tagName === 'IFRAME') {
         try {
           const doc = element.contentDocument, rect = element.getBoundingClientRect();
@@ -78,7 +81,8 @@
           }
           inspect(doc, {left: Math.max(0, clip.left - rect.left), top: Math.max(0, clip.top - rect.top),
             right: Math.min(element.clientWidth, clip.right - rect.left),
-            bottom: Math.min(element.clientHeight, clip.bottom - rect.top)}, depth + 1);
+            bottom: Math.min(element.clientHeight, clip.bottom - rect.top)}, depth + 1,
+            {left: offset.left + rect.left, top: offset.top + rect.top});
         } catch { uncertain = true; }
       }
       if (!element.matches(controlSelector)) continue;
@@ -103,14 +107,17 @@
       if (!stem || stem.length > 8000 || options.some(o => !o || o.length > 2000) || new Set(options).size !== options.length) {
         uncertain = true; continue;
       }
-      candidates.push({kind: [...kinds][0], stem, options});
+      const rect = container.getBoundingClientRect();
+      candidates.push({kind: [...kinds][0], stem, options,
+        top: offset.top + rect.top, left: offset.left + rect.left});
     }
   }
   try {
     inspect(document, {left: 0, top: 0, right: innerWidth, bottom: innerHeight});
-    if (uncertain || candidates.length !== 1) return {status: 'unavailable'};
-    const question = candidates[0];
-    if (JSON.stringify(question).length > 12000) return {status: 'unavailable'};
-    return {status: 'ok', question};
+    if (uncertain || candidates.length < 1 || candidates.length > 10) return {status: 'unavailable'};
+    candidates.sort((a, b) => a.top - b.top || a.left - b.left);
+    const questions = candidates.map(({kind, stem, options}) => ({kind, stem, options}));
+    if (new TextEncoder().encode(JSON.stringify(questions)).length > 48000) return {status: 'unavailable'};
+    return questions.length === 1 ? {status: 'ok', question: questions[0]} : {status: 'ok', questions};
   } catch { return {status: 'unavailable'}; }
 })()

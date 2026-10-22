@@ -1,8 +1,10 @@
 # Privacy
 
-本机网页工作台只监听 127.0.0.1 随机端口，在你点击启动并按 F8 后运行原有流程。API Key 输入仅发送给本机程序，不进入浏览器持久存储；已保存的 Key 不回传。最多 20 条题目/答案记录保留在进程内存，主动清空或退出时销毁。关闭浏览器标签不会自动退出后台，请点击“退出本机程序”。公开 GitHub Pages 仅含静态预览和公共示例，禁用 Key 输入，无法读取屏幕或调用模型。详见 [网页工作台](docs/WEB_UI.md)。
+Windows App 的界面服务只监听 127.0.0.1 随机端口，在你点击启动并按 F8 后运行识题。API Key 输入仅发送给本机程序，不进入浏览器持久存储；已保存的 Key 不回传。最多 20 条题目/答案记录保留在进程内存，主动清空或退出时销毁。关闭 App 原生窗口会停止服务、释放热键并退出。公开 GitHub Pages 是下载入口与静态预览，预览禁用 Key 输入，无法读取屏幕或调用模型。详见 [App 使用说明](docs/WEB_UI.md)。
 
-AutoQuestion 不运行开发者中央服务器，没有 telemetry、analytics、crash upload、更新信标、截图历史存储或自动上传浏览历史。按 F8 才启动一次分析，BUSY/debounce 不会排队追加分析。
+Android App 由用户授权悬浮窗和 MediaProjection 屏幕共享。只有点击悬浮按钮才把一帧画面用于识题请求，截图不写入文件、不写入相册，也不请求相册或存储权限。共享会话期间 Android 会持续向内存 Surface 投影，非触发帧立即丢弃；停止服务后释放投影、Surface、悬浮窗和网络任务。Key 由 Android Keystore 的 AES-GCM 密钥加密保存，本地备份关闭，不返回给网页。图片直接发送给用户设置的 HTTPS Provider；屏幕上的个人信息也可能包含在图片中。手机锁屏、系统停止共享或主动停止后需重新授权。详见 [Android 使用说明](docs/ANDROID.md)。
+
+AutoQuestion 不运行开发者中央服务器，没有 telemetry、analytics、crash upload、更新信标、截图历史存储或自动上传浏览历史。按 F8 或点击手机悬浮按钮才启动一次分析，BUSY/debounce 不会排队追加分析。同屏多题 Vision 使用一次图片请求，DOM 分别发送各题文本。
 
 | 路径 | 发给用户所选 Provider 的内容 |
 |---|---|

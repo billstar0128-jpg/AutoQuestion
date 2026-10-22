@@ -13,7 +13,7 @@
 | LLM_BASE_URL | HTTP(S) API root，禁止凭据、query、fragment；不要填到 chat/completions |
 | LLM_MODEL | 账户可调用的 model identifier |
 | LLM_SUPPORTS_VISION | false；确实支持图片的模型才设 true |
-| LLM_TIMEOUT_SECONDS | 30；1～120 有限秒数 |
+| LLM_TIMEOUT_SECONDS | 180；1～300 有限秒数，多题可适当延长 |
 | AUTO_ACTION | 旧模板预留，当前不读取、不执行动作 |
 
 显式文件用 `main.py --env-file .env` 加载；[模板](../.env.example) 的 Key 保持空白。完整显式配置可跳过向导，仅 HOTKEY 等辅助变量不会跳过。Config 默认 fake/vision 是兼容行为，API 向导推荐 AUTO。

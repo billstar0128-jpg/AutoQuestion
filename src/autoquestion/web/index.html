@@ -127,6 +127,7 @@
                   <span class="empty-caption">单选 · 多选 · 判断题</span>
                 </div>
                 <div id="answer-result" class="answer-result" hidden>
+                  <div id="batch-results" class="batch-results" aria-label="本次识别的各题答案" hidden></div>
                   <h3 id="question-text"></h3>
                   <div id="question-options" class="question-options"></div>
                   <div class="answer-block">
@@ -320,6 +321,9 @@
                       </select>
                     </div>
                   </div>
+                  <label for="request-timeout">模型等待时间（秒）</label>
+                  <input id="request-timeout" type="number" min="1" max="300" step="1" value="180" />
+                  <p class="field-help">多道题建议 180 秒，最多 300 秒。正在分析时请稍等；停止会丢弃迟到答案。</p>
                   <label class="checkbox-label"
                     ><input id="vision" type="checkbox" /><span
                       >我确认这个模型支持图片输入<small

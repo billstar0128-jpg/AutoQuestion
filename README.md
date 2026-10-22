@@ -12,15 +12,18 @@
 
 **0.1.0rc1 还是第一个公开 Release Candidate。** 如果你愿意测试，遇到难装、难懂、识别失败或者任何反直觉的地方，Issue 比“能跑”更有价值。
 
-当前版本为 **0.2.2**：提供独立窗口的 Windows App，关闭窗口即可退出，再次双击唤起已有窗口；安装可选 AutoQuestion Browser Extension 后，受支持的 Chrome / Edge 页面在 AUTO 下优先 DOM，提取不可用时回退 Vision。WPS、记事本、PDF 阅读器及其他桌面应用直接 Vision。上面的介绍保留首次公开 RC 的背景。
+当前版本为 **0.3.0**：同一屏幕里的单选、多选、判断题可以分别识别、分别给出答案，单次最多 10 道完整可见题。保留独立窗口的 Windows App，并新增 Android 悬浮识题 App。上面的介绍保留首次公开 RC 的背景。
 
-**普通用户：[下载 Windows App](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.2.2/AutoQuestion-0.2.2-Windows-x64.zip) → 完整解压 → 双击 AutoQuestion.exe。** 不需要 Python 或 PowerShell。在 App 的独立窗口中配置模型和 API Key，保存后启动答题。请保留 _internal 文件夹。详见 [App 使用说明](docs/WEB_UI.md)。[网站首页](https://billstar0128-jpg.github.io/AutoQuestion/) 是下载入口，配置在本机 App 内完成。
+**电脑：[下载 Windows App](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.3.0/AutoQuestion-0.3.0-Windows-x64.zip) → 完整解压 → 双击 AutoQuestion.exe。** 不需要 Python 或 PowerShell。在 App 的独立窗口中配置模型和 API Key，保存后启动答题。请保留 _internal 文件夹。详见 [App 使用说明](docs/WEB_UI.md)。[网站首页](https://billstar0128-jpg.github.io/AutoQuestion/) 是下载入口，配置在本机 App 内完成。
+
+**手机：[下载 Android APK](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.3.0/AutoQuestion-0.3.0-Android.apk)**，适用 Android 8.0 及以上。安装后配置支持图片的模型，允许悬浮窗并通过系统屏幕共享授权，点击小方框识题。截图只在内存中处理，不写入相册。安装、操作和小米权限说明见 [Android 使用说明](docs/ANDROID.md)。
 
 ## What it does
 
 用于自建题库、本地 Demo、非计分练习、调查问卷和获得授权的学习场景。模型可能答错，结构校验不能代替人工核对。
 
-- 常驻 F8 / ESC，支持 BUSY 和 debounce，每次只分析一道题。
+- Windows 常驻 F8 / ESC，支持 BUSY 和 debounce；同屏多题按顺序分别显示，单次最多 10 道。
+- 三到六道混合单选、多选、判断也可分别回答；Windows 首次配置等待 180 秒，可调到 300 秒，Android 最长读取等待 180 秒。
 - 支持单选、多选、判断，保留无字母选项的实际文本。
 - 前台窗口 Vision、可选 Chrome / Edge 扩展 DOM、受管理本地 Demo DOM、AUTO 路由和无 Key 的 Offline Demo。
 - 首次设置向导、Provider Profiles、Windows Credential Manager、session-only Key 和本地 Doctor。
@@ -268,6 +271,8 @@ Key 输入显示星号或完全隐藏。普通配置写入 `%APPDATA%\AutoQuesti
 
 四题 Demo 包括带字母单选、无字母单选、多选、判断；另有 Canvas 行星题。它是测试和可选教程，不是程序的必经主界面。
 
+普通 Demo 的“同屏两道题”按钮可验证单选和多选分别显示。另有 [六道混合题源码](examples/browser_dom/mixed_questions.html)和[在线练习页](https://billstar0128-jpg.github.io/AutoQuestion/try-questions.html)，包含单选、多选、判断各两道，电脑或手机浏览器可直接打开后识题。六题页面不使用固定 Fake 答案，真实识题需要自己的模型。
+
 ```powershell
 $env:PLAYWRIGHT_BROWSERS_PATH = '0'
 .\.venv-win\Scripts\python.exe -m playwright install chromium
@@ -315,13 +320,13 @@ Profile 是厂商预设，Protocol Provider 是实际请求适配器。
 
 已有 API root 核对依据保留：[DeepSeek](https://api-docs.deepseek.com/)、[Kimi](https://platform.kimi.com/docs/get-api-key)、[智谱](https://docs.bigmodel.cn/cn/guide/develop/openai/introduction)。真实预设可编辑地址和模型；预设可用不等于厂商所有模型都经过本项目验证。Vision 是具体 Model 的配置能力，不是品牌永久属性。
 
-Native Anthropic / Claude API **not supported in 0.2.2**。通过兼容网关调用 Claude 可以尝试 Custom，但不保证所有网关兼容。ChatGPT Plus / Pro 订阅不等于 OpenAI API Key 或 API billing balance，登录 ChatGPT App 不会自动提供 API 凭据；参见 [OpenAI API Quick Start](https://developers.openai.com/api/docs/quickstart)。
+Native Anthropic / Claude API **not supported in 0.3.0**。通过兼容网关调用 Claude 可以尝试 Custom，但不保证所有网关兼容。ChatGPT Plus / Pro 订阅不等于 OpenAI API Key 或 API billing balance，登录 ChatGPT App 不会自动提供 API 凭据；参见 [OpenAI API Quick Start](https://developers.openai.com/api/docs/quickstart)。
 
 ## Supported Question Types / limitations
 
-完整回答协议支持 `single_choice`、`multiple_choice`、`true_false`。无字母选项不会生成 A/B/C/D。填空和简答只预留 Schema，尚未完整支持求解。
+完整回答协议支持 `single_choice`、`multiple_choice`、`true_false`，可在同一画面混合出现。Vision 一张图片一次请求，按屏幕阅读顺序返回各题；DOM 按可见题组分别请求并校验，整批完成后显示。单次最多 10 道，不自动滚动；Vision 跳过残缺或不可读的题，DOM 无法确定完整题组时拒绝提取或由 AUTO 回退 Vision。界面显示识别题干、参考答案和简短理由，请核对是否漏题。无字母选项不会生成 A/B/C/D。填空和简答只预留 Schema，尚未完整支持求解。
 
-不支持 OCR、原生 Anthropic、个人浏览器调试端口接管、自动点击/勾选/提交/下一题。扩展只读用户授权页面的当前可见语义题组；跨域 iframe、封闭 Shadow DOM、自绘控件、歧义题组可能需要 Vision。没有数据库、遥测或云账户。不宣称支持所有网站、所有 AI 模型或 100% accurate。0.2.2 提供 Windows x64 便携 EXE 与源码，不提供 MSI、PyPI 或独立 wheel 分发。
+不支持独立 OCR、原生 Anthropic、个人浏览器调试端口接管、自动点击/勾选/提交/下一题。扩展只读用户授权页面的当前可见语义题组；跨域 iframe、封闭 Shadow DOM、自绘控件、歧义题组可能需要 Vision。没有数据库、遥测或云账户。不宣称支持所有网站、所有 AI 模型或 100% accurate。0.3.0 提供 Windows x64 便携 EXE、Android APK 与源码，不提供 MSI、iOS、PyPI 或独立 wheel 分发。Android 只使用 Vision；系统禁止捕获的页面可能黑屏，不能绕过。
 
 ## Privacy and Security
 
@@ -356,13 +361,13 @@ Key 不进入普通 config、日志、repr 或仓库。不要上传真实 `.env`
 
 物理桌面另测 `.\.venv-win\Scripts\python.exe -X utf8 tests/smoke_browser_window.py -v`。关闭旧实例，测试窗口需获得前台；测试不会夺取其他用户窗口或读取真实屏幕像素。CI 不运行此可见 smoke；本地完整测试默认保留原生热键测试。
 
-[Development](docs/DEVELOPMENT.md) · [Technical Notes](docs/TECHNICAL_NOTES.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) · [Release Notes](docs/RELEASE_NOTES_0.2.2.md)
+[Development](docs/DEVELOPMENT.md) · [Technical Notes](docs/TECHNICAL_NOTES.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) · [Release Notes](docs/RELEASE_NOTES_0.3.0.md)
 
 ## License / publication state
 
 AutoQuestion 使用 **Apache License 2.0（Apache-2.0）**，完整条款见 [LICENSE](LICENSE)。
 
-**0.2.2 · Windows App 与源码。** 历史标签保持不变。Chrome / Edge Browser DOM 已实现，并有自动测试和本地合成页面测试覆盖；M15 发布前由用户明确决定跳过人工 GUI 验收，不代表所有真实网页均已人工验证。真实浏览器反馈作为非阻断跟进。
+**0.3.0 · Windows App、Android APK 与源码。** 历史标签保持不变。Chrome / Edge Browser DOM 有自动测试和本地合成页面测试覆盖；不代表所有真实网页均已人工验证。Android 尚未在用户的小米真机验收，权限与后台策略请按使用说明检查。
 
 [问题反馈](https://github.com/billstar0128-jpg/AutoQuestion/issues) · [Actions](https://github.com/billstar0128-jpg/AutoQuestion/actions/workflows/ci.yml) · [安全报告](https://github.com/billstar0128-jpg/AutoQuestion/security/advisories/new)
 

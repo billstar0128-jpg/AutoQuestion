@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 from typing import TYPE_CHECKING
 
-from ..schemas import AnswerResult, Question, VisionAnalysisResult
+from ..schemas import AnswerResult, Question, VisionAnalysisResult, VisionBatchResult
 
 if TYPE_CHECKING:
     from ..capture.screen import CapturedImage
@@ -25,6 +25,6 @@ class BaseLLMProvider(ABC):
     def answer_question(self, question: Question) -> AnswerResult:
         """返回通过协议与题目一致性验证的答案。"""
 
-    def analyze_image(self, image: "CapturedImage") -> VisionAnalysisResult:
+    def analyze_image(self, image: "CapturedImage") -> VisionAnalysisResult | VisionBatchResult:
         """默认明确拒绝，旧的纯文本 Provider 无需实现图像能力。"""
         raise LLMProviderError("Current model is not configured for vision.")

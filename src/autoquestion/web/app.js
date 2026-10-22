@@ -14,7 +14,7 @@ const preview =
   !token && (!loopback || location.pathname.includes("/preview/"));
 const locked = !token && !preview;
 const appDownload =
-  "https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.2.2/AutoQuestion-0.2.2-Windows-x64.zip";
+  "https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.3.0/AutoQuestion-0.3.0-Windows-x64.zip";
 let providers = [];
 let state = {
   config: null,
@@ -168,6 +168,7 @@ function fillSettings(config) {
     $("model").value = config.model;
     $("vision").checked = config.supports_vision;
     $("mode").value = config.input_mode;
+    $("request-timeout").value = config.timeout_seconds ?? 180;
     $("storage").value =
       config.credential_mode === "session" ? "session" : "stored";
     $("key-help").textContent = config.has_key
@@ -202,6 +203,29 @@ function showResult(result) {
   if (!result) {
     $("result-source").textContent = "等待输入";
     return;
+  }
+  const batch = result.batch_total > 1
+    ? state.history.filter((item) => item.batch_id === result.batch_id)
+    : [];
+  $("batch-results").replaceChildren();
+  $("batch-results").hidden = !batch.length;
+  if (batch.length) {
+    $("batch-results").append(node("h3", "batch-heading", `同屏识别 · ${result.batch_total} 道题`));
+    batch.forEach((item) => {
+      const card = node("button", "batch-result-card");
+      card.type = "button";
+      card.setAttribute("aria-pressed", String(item === result));
+      card.append(
+        node("span", "batch-question", `第 ${item.batch_index} 题 · ${item.question.question_text}`),
+        node("strong", "batch-answer", answerLabel(item.answer)),
+        node("span", "batch-reason", item.answer.short_reason),
+      );
+      card.addEventListener("click", () => {
+        selectedResult = state.history.indexOf(item);
+        showResult(item);
+      });
+      $("batch-results").append(card);
+    });
   }
   const { question, answer } = result;
   $("question-text").textContent = question.question_text;
@@ -258,7 +282,7 @@ function render() {
     "busy",
     state.active && state.status !== "READY",
   );
-  $("version").textContent = "v" + (state.version || "0.2.2");
+  $("version").textContent = "v" + (state.version || "0.3.0");
   $("start-button").textContent = preview
     ? "下载 App 后开始 →"
     : state.active
@@ -312,7 +336,7 @@ function render() {
     );
   state.history.forEach((result, index) => {
     const row = node("div", "history-item");
-    const button = node("button", "", result.question.question_text);
+    const button = node("button", "", (result.batch_total > 1 ? `第 ${result.batch_index} 题 · ` : "") + result.question.question_text);
     button.addEventListener("click", () => {
       selectedResult = index;
       showResult(result);
@@ -373,7 +397,9 @@ $("pair-button").addEventListener("click", () =>
   }),
 );
 async function refresh() {
-  state = await api("/api/state");
+  const next = await api("/api/state");
+  if (next.history[0]?.batch_id !== state.history[0]?.batch_id) selectedResult = 0;
+  state = next;
   render();
 }
 const demoResult = {
@@ -478,6 +504,7 @@ $("settings-form").addEventListener("submit", (event) => {
       model: $("model").value,
       supports_vision: $("vision").checked,
       input_mode: $("mode").value,
+      timeout_seconds: Number($("request-timeout").value),
       credential_mode: $("storage").value,
       api_key: $("api-key").value,
     };

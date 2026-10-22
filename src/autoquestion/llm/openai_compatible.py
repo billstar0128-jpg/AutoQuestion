@@ -8,7 +8,7 @@ import time
 from openai import APIConnectionError, APIError, APIStatusError, APITimeoutError, OpenAI
 
 from ..config import LLMConfig
-from ..schemas import AnswerResult, Question, QuestionType, VisionAnalysisResult
+from ..schemas import AnswerResult, Question, QuestionType, VisionAnalysisResult, VisionBatchResult
 
 if TYPE_CHECKING:
     from ..capture.screen import CapturedImage
@@ -44,7 +44,7 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         LOGGER.debug("Answer schema and consistency validation passed")
         return answer
 
-    def analyze_image(self, image: "CapturedImage") -> VisionAnalysisResult:
+    def analyze_image(self, image: "CapturedImage") -> VisionAnalysisResult | VisionBatchResult:
         """一张图一次请求：同时识题和答题，不进行第二次文本请求。"""
         if not self.supports_vision:
             raise LLMProviderError("Current model is not configured for vision.")
@@ -52,7 +52,7 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         content = self._request([
             {"role": "system", "content": VISION_PROMPT},
             {"role": "user", "content": [
-                {"type": "text", "text": "识别并回答当前主要的一道完整单选、多选或判断题。"},
+                {"type": "text", "text": "按屏幕阅读顺序分别识别并回答所有完整可见的单选、多选或判断题，最多10道；每道题的题干、选项和答案分别放入 results。"},
                 {"type": "image_url", "image_url": {
                     "url": f"data:{image.media_type};base64,{encoded}"}},
             ]},

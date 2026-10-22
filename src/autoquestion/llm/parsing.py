@@ -5,7 +5,7 @@ import re
 
 from pydantic import ValidationError
 
-from ..schemas import AnswerResult, Question, VisionAnalysisResult, validate_answer_against_question
+from ..schemas import AnswerResult, Question, VisionAnalysisResult, VisionBatchResult, validate_answer_against_question
 from .base import LLMResponseParseError
 
 
@@ -22,9 +22,9 @@ def _reject_constant(value: str) -> None:
     raise ValueError("non-standard JSON number")
 
 
-def _parse_object(content: str) -> dict[str, object]:
+def _parse_object(content: str, *, max_length: int = 32_000) -> dict[str, object]:
     """所有失败只提供固定提示，不回显原始模型输出或 Pydantic 输入。"""
-    if not isinstance(content, str) or not content.strip() or len(content) > 32_000:
+    if not isinstance(content, str) or not content.strip() or len(content) > max_length:
         raise LLMResponseParseError("模型响应为空、不是文本或超过长度限制。")
     text = content.strip()
     fenced = re.fullmatch(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.IGNORECASE)
@@ -54,11 +54,14 @@ def parse_answer_response(content: str, question: Question) -> AnswerResult:
     return validate_answer_against_question(question, answer)
 
 
-def parse_vision_response(content: str) -> VisionAnalysisResult:
-    payload = _parse_object(content)
+def parse_vision_response(content: str) -> VisionAnalysisResult | VisionBatchResult:
+    payload = _parse_object(content, max_length=160_000)
     if payload == {"error": "unable_to_identify_question"}:
-        raise LLMResponseParseError("无法可靠识别唯一、完整的单选、多选或判断题，请调整题目窗口后重试。")
+        raise LLMResponseParseError("无法可靠识别完整的单选、多选或判断题，请调整题目窗口后重试。")
     try:
+        if 'results' in payload:
+            return VisionBatchResult.model_validate(payload)
+        # 兼容旧的单题响应；不猜测数组、缺失题目或不同题之间的答案对应。
         return VisionAnalysisResult.model_validate(payload)
     except ValidationError:
         raise LLMResponseParseError("Vision 结果结构无效，或题目与答案不一致。") from None

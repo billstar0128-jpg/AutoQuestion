@@ -121,7 +121,7 @@ class WebFrontendTests(unittest.TestCase):
 
     def test_static_preview_never_requests_local_api_or_accepts_key(self):
         output = build(Path(self.directory.name) / 'preview')
-        self.assertEqual({path.name for path in output.iterdir()}, {'index.html', 'download.css', 'preview'})
+        self.assertEqual({path.name for path in output.iterdir()}, {'index.html', 'download.css', 'preview', 'try-questions.html'})
         self.assertNotIn('id="api-key"', (output / 'index.html').read_text(encoding='utf-8'))
         requests = []
         files = ThreadingHTTPServer(('127.0.0.1', 0), partial(SilentFiles, directory=str(output)))
@@ -144,6 +144,63 @@ class WebFrontendTests(unittest.TestCase):
             files.shutdown()
             files.server_close()
             thread.join(3)
+
+    def test_same_screen_single_and_multiple_answers_visible_together_in_order(self):
+        from test_vision_batch import batch_payload
+        from autoquestion.schemas import VisionBatchResult
+        self.open_local()
+        self.page.locator('.nav-link[data-view=workspace]').click()
+        results = VisionBatchResult.model_validate(batch_payload()).model_dump(mode='json')['results']
+        record = logging.LogRecord('autoquestion', logging.INFO, '', 0, 'Batch ready', (), None)
+        record.question_results = results
+        self.controller.record(record)
+        self.page.locator('#batch-results').wait_for(state='visible')
+        cards = self.page.locator('.batch-result-card')
+        self.assertEqual(cards.count(), 2)
+        self.assertIn('1. 法国的首都', cards.nth(0).inner_text())
+        self.assertIn('A · 巴黎', cards.nth(0).inner_text())
+        self.assertIn('2. 以下哪些是欧洲城市', cards.nth(1).inner_text())
+        self.assertIn('A · 巴黎、B · 伦敦', cards.nth(1).inner_text())
+        cards.nth(1).click()
+        self.assertIn('2. 以下哪些', self.page.locator('#question-text').inner_text())
+        self.assertEqual(self.page.locator('.question-option.selected').count(), 2)
+        self.assertEqual([item['batch_index'] for item in self.controller.state()['history']], [1, 2])
+        self.page.set_viewport_size({'width': 390, 'height': 844})
+        self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
+        self.assertEqual(self.errors, [])
+
+    def test_six_mixed_answers_and_longer_wait_setting(self):
+        from test_vision_batch import mixed_batch_payload
+        from autoquestion.schemas import VisionBatchResult
+        self.open_local()
+        self.assertEqual(self.page.locator('#request-timeout').input_value(), '180')
+        self.page.locator('#api-key').fill(SECRET)
+        self.page.locator('#model').fill('test-model')
+        self.page.locator('#storage').select_option('session')
+        self.page.locator('#request-timeout').fill('240')
+        self.page.locator('#save-button').click()
+        self.page.locator('#view-workspace').wait_for(state='visible')
+        self.assertEqual(self.controller.store.load().timeout_seconds, 240)
+        record = logging.LogRecord('autoquestion', logging.INFO, '', 0, 'Six questions ready', (), None)
+        record.question_results = VisionBatchResult.model_validate(mixed_batch_payload()).model_dump(mode='json')['results']
+        self.controller.record(record)
+        cards = self.page.locator('.batch-result-card')
+        self.page.wait_for_function("() => document.querySelectorAll('.batch-result-card').length === 6")
+        self.assertIn('错误', cards.nth(2).inner_text())
+        cards.nth(5).click()
+        self.assertTrue(self.page.locator('#question-text').inner_text().startswith('6.'))
+        self.assertEqual(self.page.locator('#answer-text').inner_text(), '错误')
+        self.assertEqual(self.errors, [])
+
+    def test_mobile_six_question_page_fits_without_cutting_options(self):
+        self.page.set_viewport_size({'width': 390, 'height': 844})
+        self.page.goto((ROOT / 'examples/browser_dom/mixed_questions.html').as_uri())
+        self.assertEqual(self.page.locator('fieldset').count(), 6)
+        self.assertTrue(self.page.evaluate('''() => [...document.querySelectorAll('legend,label')].every(el => {
+            const r = el.getBoundingClientRect();
+            return r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth;
+        })'''))
+        self.assertEqual(self.page.locator('input:checked').count(), 0)
 
 
 if __name__ == '__main__':

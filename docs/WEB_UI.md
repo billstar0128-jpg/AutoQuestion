@@ -2,7 +2,7 @@
 
 ## 普通用户：下载 Windows App
 
-[下载 AutoQuestion-0.2.2-Windows-x64.zip](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.2.2/AutoQuestion-0.2.2-Windows-x64.zip)，右键“全部解压”，保留 _internal 文件夹，双击 AutoQuestion.exe。无需 Python、依赖安装或 PowerShell。App 会打开独立桌面窗口；在这里可以真正输入、保存配置并运行答题。
+[下载 AutoQuestion-0.3.0-Windows-x64.zip](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.3.0/AutoQuestion-0.3.0-Windows-x64.zip)，右键“全部解压”，保留 _internal 文件夹，双击 AutoQuestion.exe。无需 Python、依赖安装或 PowerShell。App 会打开独立桌面窗口；在这里可以真正输入、保存配置并运行答题。
 
 网站首页只提供 App 下载与说明，API Key 不在网上填写。先前网页是交互预览，无法保存配置；该入口已改成明确的下载页。可选交互预览放在单独的 preview/，其“配置”按钮引导下载 App。
 
@@ -15,6 +15,10 @@
 工作台有三个页面：答题工作台、模型与配置、开始使用。无配置时直接显示首次配置；已有配置时读取当前用户的 AppData 配置，已保存 Key 不回传浏览器。点击启动后把题目窗口置前台再按 F8，答案与实际来源会显示在工作台。ESC 停止热键服务并释放资源，控制台保留以便重新启动。点击右上角 × 或“退出本机程序”会停止答题、清空内存记录、关闭本机服务并退出。最小化保持运行，再次双击只唤起已有窗口。正在执行的同步模型请求会完成或超时后清理；保存的配置和安全凭据保留。
 
 离线 Demo 按钮仅本次启用 Fake/MANUAL 示例，不更改已保存的 API 配置。预置答案不代表真实模型能力。受管理 DOM Demo 仍可用原有 --open-demo 命令；需要对应 Chromium runtime。答题运行期间设置不能修改，先停止再保存。
+
+同一屏幕中有多道完整题时，工作台先列出“同屏识别”的各题题干、答案与理由，点击某一题可查看该题的全部选项和置信度。单次最多 10 道；不会自动滚动或翻页，画面过小、裁切或遮挡可能漏题。内置 DOM Demo 可点击“同屏两道题：单选 + 多选”验证，返回普通 Demo 后单题流程继续可用。
+
+三到六道题可以混合单选、多选和判断。首次配置的模型等待时间为 180 秒，可在设置中改到最多 300 秒；旧配置保留原等待时间，题多时请在“模型等待时间”调整后保存。DOM 多题会逐题请求，可能增加等待和 API 用量。处理时不会排队追加请求；Windows 的同步请求停止后会等完成或超时再清理，迟到答案不展示。
 
 ## 第一次配置示例
 

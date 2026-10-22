@@ -4,36 +4,15 @@ import logging
 import threading
 import time
 
-from pydantic import ValidationError
-
 from .browser_session import BrowserSession
 from .browser_identity import BrowserClassifier
-from .capture.browser import BrowserExtractionError
+from .capture.browser import BrowserExtractionError, validated_dom_question, validated_dom_questions
 from .capture.screen import ScreenCapture
 from .config import Config
 from .dom import answer_dom_question
-from .schemas import Question, QuestionType, SourceType
 from .vision import VisionWorkflow, vision_provider
 
 LOGGER = logging.getLogger("autoquestion")
-
-
-def validated_dom_question(value: Question) -> Question:
-    """重新验证模型，拒绝 model_construct/model_copy 绕过字段验证的对象。"""
-    try:
-        if not isinstance(value, Question):
-            raise ValueError
-        question = Question.model_validate(value.model_dump(mode="python", warnings=False))
-        if question.source_type != SourceType.DOM or len(question.question_text) > 8000:
-            raise ValueError
-        if question.question_type in (QuestionType.SINGLE_CHOICE, QuestionType.MULTIPLE_CHOICE, QuestionType.TRUE_FALSE):
-            if not 2 <= len(question.options) <= 50:
-                raise ValueError
-        if any(len(option.text) > 2000 for option in question.options):
-            raise ValueError
-        return question
-    except (ValidationError, ValueError, TypeError, AttributeError):
-        raise BrowserExtractionError("DOM Question 基本结构无效。") from None
 
 
 class InputRouter:
@@ -64,12 +43,12 @@ class InputRouter:
                 return
             try:
                 if managed:
-                    value = self.browser.extract_for_target(target, lambda: self.capture.verify_target(target))
+                    value = self.browser.extract_for_target(target, lambda: self.capture.verify_target(target), all_questions=True)
                 elif self.bridge is not None:
-                    value = self.bridge.extract_for_target(target, lambda: self.capture.verify_target(target), pin)
+                    value = self.bridge.extract_for_target(target, lambda: self.capture.verify_target(target), pin, all_questions=True)
                 else:
                     raise BrowserExtractionError('Browser DOM unavailable: bridge not connected.')
-                question = validated_dom_question(value)
+                questions = validated_dom_questions(value)
             except BrowserExtractionError:
                 # 严格限制为 acquisition 错误。CaptureError（目标变化）直接终止。
                 if stop.is_set():
@@ -90,7 +69,7 @@ class InputRouter:
             LOGGER.info("Input: %s", 'DOM' if managed else 'Browser DOM')
             LOGGER.debug("Route=DOM acquisition_ms=%.1f", (time.monotonic() - started) * 1000)
             # 不在上述 try 内：Provider / JSON / Answer 校验错误绝不能触发 Vision。
-            self.answer_dom(question, stop)
+            self.answer_dom(questions[0] if len(questions) == 1 else questions, stop)
         return callback
 
 

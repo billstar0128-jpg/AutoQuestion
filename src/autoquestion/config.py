@@ -145,7 +145,7 @@ class LLMConfig:
     base_url: str = field(repr=False)
     model: str = field(repr=False)
     supports_vision: bool = False
-    timeout_seconds: float = 30.0
+    timeout_seconds: float = 180.0
 
     def __post_init__(self) -> None:
         if not isinstance(self.api_key, SecretStr) or not self.api_key.get_secret_value().strip():
@@ -155,8 +155,8 @@ class LLMConfig:
         base_url, model = validate_api_settings(self.base_url, self.model)
         object.__setattr__(self, 'base_url', base_url)
         object.__setattr__(self, 'model', model)
-        if not math.isfinite(self.timeout_seconds) or not 1 <= self.timeout_seconds <= 120:
-            raise ConfigError("LLM_TIMEOUT_SECONDS 必须是 1～120 的有限秒数。")
+        if not math.isfinite(self.timeout_seconds) or not 1 <= self.timeout_seconds <= 300:
+            raise ConfigError("LLM_TIMEOUT_SECONDS 必须是 1～300 的有限秒数。")
 
 
 def load_llm_config(environ: Mapping[str, str] | None = None) -> LLMConfig:
@@ -171,9 +171,9 @@ def load_llm_config(environ: Mapping[str, str] | None = None) -> LLMConfig:
     if vision not in {"true", "false"}:
         raise ConfigError("LLM_SUPPORTS_VISION 必须为 true 或 false。")
     try:
-        timeout = float(values.get("LLM_TIMEOUT_SECONDS", "30"))
+        timeout = float(values.get("LLM_TIMEOUT_SECONDS", "180"))
     except ValueError:
-        raise ConfigError("LLM_TIMEOUT_SECONDS 必须是 1～120 的有限秒数。") from None
+        raise ConfigError("LLM_TIMEOUT_SECONDS 必须是 1～300 的有限秒数。") from None
     return LLMConfig(
         api_key=SecretStr(values.get("LLM_API_KEY", "").strip()),
         base_url=values.get("LLM_BASE_URL", ""),

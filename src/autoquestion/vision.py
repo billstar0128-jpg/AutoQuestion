@@ -4,11 +4,13 @@ from collections.abc import Callable
 import logging
 import threading
 
+from pydantic import ValidationError
+
 from .capture.screen import ScreenCapture, WindowTarget
 from .config import Config, load_llm_config
 from .llm.base import BaseLLMProvider, LLMProviderError
 from .llm.openai_compatible import OpenAICompatibleProvider
-from .schemas import format_answer, validate_answer_against_question
+from .schemas import VisionAnalysisResult, VisionBatchResult, format_answer
 
 LOGGER = logging.getLogger("autoquestion")
 
@@ -39,12 +41,30 @@ class VisionWorkflow:
                 return
             self.report_status("ANALYZING")
             result = provider.analyze_image(image)
-            answer = validate_answer_against_question(result.question, result.answer)
+            # 先原子校验整批，再发布结果；拒绝 Provider 绕过 Pydantic 构造的矛盾对象。
+            try:
+                if isinstance(result, VisionBatchResult):
+                    results = VisionBatchResult.model_validate(result.model_dump(mode='python', warnings=False)).results
+                elif isinstance(result, VisionAnalysisResult):
+                    results = (VisionAnalysisResult.model_validate(result.model_dump(mode='python', warnings=False)),)
+                else:
+                    raise LLMProviderError("Vision 结果结构无效。")
+            except ValidationError:
+                raise LLMProviderError("Vision 结果结构无效，或题目与答案不一致。") from None
             if not stop.is_set():
-                LOGGER.info("Question:\n%s\n%s\nConfidence:\n%.0f%%", result.question.question_text,
-                            format_answer(answer), answer.confidence * 100,
-                            extra={'question_result': result.question.model_dump(mode='json'),
-                                   'answer_result': answer.model_dump(mode='json')})
+                if len(results) == 1:
+                    item = results[0]
+                    LOGGER.info("Question:\n%s\n%s\nConfidence:\n%.0f%%", item.question.question_text,
+                                format_answer(item.answer), item.answer.confidence * 100,
+                                extra={'question_result': item.question.model_dump(mode='json'),
+                                       'answer_result': item.answer.model_dump(mode='json')})
+                else:
+                    text = '\n\n'.join(f"Question {index}/{len(results)}:\n{item.question.question_text}\n"
+                                         f"{format_answer(item.answer)}\nConfidence:\n{item.answer.confidence * 100:.0f}%"
+                                         for index, item in enumerate(results, 1))
+                    LOGGER.info('%s', text, extra={'question_results': [
+                        {'question': item.question.model_dump(mode='json'),
+                         'answer': item.answer.model_dump(mode='json')} for item in results]})
         return callback
 
 

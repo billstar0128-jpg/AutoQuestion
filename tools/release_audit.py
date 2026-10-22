@@ -13,12 +13,12 @@ from autoquestion.secret_safety import Finding, inspect_text
 ROOT_FILES = {'main.py', 'AutoQuestion.pyw', 'README.md', 'SECURITY.md', 'PRIVACY.md', 'CONTRIBUTING.md',
               'CHANGELOG.md', 'requirements.txt', 'requirements-dev.txt', 'pyproject.toml',
               '.gitignore', '.gitattributes', '.editorconfig', '.env.example', 'LICENSE', 'NOTICE'}
-DIRECTORIES = {'src', 'tests', 'examples', 'docs', '.github', 'tools', 'extension'}
+DIRECTORIES = {'src', 'tests', 'examples', 'docs', '.github', 'tools', 'extension', 'android'}
 SUFFIXES = {'.py', '.js', '.html', '.css', '.md', '.txt', '.toml', '.yml', '.yaml'}
 IGNORED_DIRS = {'.git', '__pycache__', '.pytest_cache', '.venv', 'venv', '.idea', '.vscode',
                 'logs', 'screenshots', 'captures', 'build', 'dist', 'htmlcov', '.cache',
-                'AppData', 'user-data', 'browser-profile', '.local-browsers', 'ms-playwright', '.playwright', 'app测试'}
-IGNORED_FILES = {'legacy_main.py', '.coverage', 'coverage.xml', 'config.json'}
+                'AppData', 'user-data', 'browser-profile', '.local-browsers', 'ms-playwright', '.playwright', 'app测试', '.gradle'}
+IGNORED_FILES = {'legacy_main.py', '.coverage', 'coverage.xml', 'config.json', 'local.properties', 'keystore.properties'}
 IGNORE_RULES = {'.env', '.env.*', '!.env.example', '.venv/', '.venv-*/', '__pycache__/',
                 '*.py[cod]', '.pytest_cache/', '.coverage', 'htmlcov/', 'logs/', 'screenshots/',
                 'build/', 'dist/', 'legacy_main.py', 'config.json', 'credentials*.json', '.local-browsers/'}
@@ -46,7 +46,7 @@ def excluded(path):
     return (name in IGNORED_FILES or ((name == '.env' or name.startswith('.env.')) and name != '.env.example')
             or any(fnmatch(name, pattern) for pattern in ('*.pyc', '*.pyo', '*.log', '*.tmp',
                    '*.cred', '*.key', 'credentials*.json', '.coverage.*', '*.zip', '*.whl', '*.tar.gz',
-                   'capture-*.png', '*.capture.png', '*.tmp.png')))
+                   'capture-*.png', '*.capture.png', '*.tmp.png', '*.jks', '*.keystore', '*.apk', '*.aab')))
 
 
 def candidate_files(root=ROOT):
@@ -68,7 +68,10 @@ def candidate_files(root=ROOT):
                     visit(path)
             elif (len(relative.parts) == 1 and path.name in ROOT_FILES) or (
                     len(relative.parts) > 1 and (path.suffix.lower() in SUFFIXES
-                    or relative.as_posix() == 'extension/manifest.json')):
+                    or relative.as_posix() == 'extension/manifest.json'
+                    or relative.as_posix() == 'android/.gitignore'
+                    or (relative.parts[0] == 'android' and path.suffix in {'.java', '.xml', '.gradle', '.properties'})
+                    or relative.as_posix() == 'tools/build_android_app.ps1')):
                 result.append(path)
             else:
                 issues.append(Finding(relative.as_posix(), 0, 'unexpected candidate/binary; contents not read'))

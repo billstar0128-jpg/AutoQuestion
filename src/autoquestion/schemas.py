@@ -149,8 +149,25 @@ class VisionAnalysisResult(SchemaModel):
     def validate_vision_result(self) -> "VisionAnalysisResult":
         if self.question.source_type != SourceType.VISION:
             raise ValueError("Vision 识题来源必须为 VISION。")
+        if len(self.question.question_text) > 8000 or len(self.question.options) > 50 or any(
+                len(option.text) > 2000 for option in self.question.options):
+            raise ValueError("Vision 题目超过长度或选项数量限制。")
         if [option.index for option in self.question.options] != list(range(len(self.question.options))):
             raise ValueError("Vision 选项 index 必须按视觉顺序从 0 连续编号。")
         # 模型保持冻结；仅在构造校验阶段写入已验证的规范顺序答案。
         object.__setattr__(self, "answer", validate_answer_against_question(self.question, self.answer))
+        return self
+
+
+class VisionBatchResult(SchemaModel):
+    """同一截图的完整题组；数组顺序即屏幕阅读顺序。"""
+
+    results: Annotated[tuple[VisionAnalysisResult, ...], Field(min_length=1, max_length=10)]
+
+    @model_validator(mode="after")
+    def reject_duplicate_questions(self) -> "VisionBatchResult":
+        # 同一题可能被重复排版，也可能有不同编号；仅拒绝完全相同的识别结果。
+        identities = [item.question.model_dump_json() for item in self.results]
+        if len(identities) != len(set(identities)):
+            raise ValueError("同一截图不能重复返回完全相同的题目。")
         return self

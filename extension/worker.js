@@ -50,7 +50,10 @@ async function extract(message) {
       });
       if (!await same()) result.status = 'changed';
       else if (results.length === 1 && results[0].result?.status === 'ok') {
-        result.status = 'ok'; result.question = results[0].result.question;
+        result.status = 'ok';
+        const value = results[0].result;
+        if (Array.isArray(value.questions)) result.questions = value.questions;
+        else result.question = value.question;
       } else if (results[0]?.result?.status === 'changed') result.status = 'changed';
     }
   } catch {

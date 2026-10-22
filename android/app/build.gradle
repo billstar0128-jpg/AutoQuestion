@@ -1,0 +1,49 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.autoquestion.mobile'
+    compileSdk 36
+    useLibrary 'android.test.runner', false
+    useLibrary 'android.test.base', false
+    defaultConfig {
+        applicationId 'com.autoquestion.mobile'
+        minSdk 26
+        targetSdk 36
+        versionCode 300
+        versionName '0.3.0'
+        testInstrumentationRunner 'android.test.InstrumentationTestRunner'
+    }
+    signingConfigs {
+        release {
+            if (System.getenv('ANDROID_KEYSTORE_FILE')) {
+                storeFile file(System.getenv('ANDROID_KEYSTORE_FILE'))
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (System.getenv('ANDROID_KEYSTORE_FILE')) signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    testOptions { unitTests.returnDefaultValues = true }
+    sourceSets.main.assets.srcDir layout.buildDirectory.dir('generated/licenseAssets')
+}
+
+tasks.register('copyProjectLicense', Copy) {
+    from rootProject.file('../LICENSE')
+    into layout.buildDirectory.dir('generated/licenseAssets')
+}
+tasks.named('preBuild').configure { dependsOn 'copyProjectLicense' }
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20250517'
+}

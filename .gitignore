@@ -41,3 +41,11 @@ ms-playwright/
 *.whl
 *.tar.gz
 app测试/
+# Android toolchain outputs, local SDK paths and signing secrets stay local.
+.gradle/
+local.properties
+*.jks
+*.keystore
+keystore.properties
+*.apk
+*.aab

@@ -107,19 +107,20 @@ class BrowserSession:
                 "无法启动本地 Chromium；请在 .venv-win 中安装 Playwright Chromium runtime。"
             ) from None
 
-    def extract_question(self) -> Question:
+    def extract_question(self, *, all_questions: bool = False) -> Question | tuple[Question, ...]:
         async def extract() -> Question:
             if self._adapter is None:
                 raise BrowserExtractionError("浏览器会话尚未启动。")
             if self._adapter.page.is_closed() or self._adapter.page.url not in DEMO_URLS:
                 raise BrowserExtractionError("受管理页面已关闭或离开本地 Demo，请重启 DOM 模式。")
-            return await self._adapter.extract_question()
+            return await self._adapter.extract_questions() if all_questions else await self._adapter.extract_question()
         return self._call(extract)
 
     def owns_target(self, target: WindowTarget) -> bool:
         return bool(self._process_id and target.process_id == self._process_id)
 
-    def extract_for_target(self, target: WindowTarget, verify: Callable[[], None]) -> Question:
+    def extract_for_target(self, target: WindowTarget, verify: Callable[[], None], *,
+                           all_questions: bool = False) -> Question | tuple[Question, ...]:
         """AUTO 专用：PID、唯一窗口/页面及焦点一致才读 DOM。"""
         if not self._process_id or target.process_id != self._process_id:
             raise BrowserExtractionError("当前窗口不是受管理浏览器。")
@@ -134,7 +135,7 @@ class BrowserSession:
                         or WindowsWindowAPI().browser_windows(self._process_id) != [target.hwnd]
                         or not await page.evaluate("document.hasFocus() && document.visibilityState === 'visible'")):
                     raise BrowserExtractionError("无法唯一对应前台浏览器页面。")
-                question = await self._adapter.extract_question()
+                question = await self._adapter.extract_questions() if all_questions else await self._adapter.extract_question()
                 verify()
                 if not await page.evaluate("document.hasFocus() && document.visibilityState === 'visible'"):
                     raise BrowserExtractionError("页面焦点已变化。")

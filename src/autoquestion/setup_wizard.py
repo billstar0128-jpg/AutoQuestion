@@ -192,7 +192,7 @@ def run_setup(store, backend, console, existing=None):
                 config = UserConfig(provider_profile=preset.id, protocol_provider=preset.protocol_provider,
                                     display_name=display, base_url=base_url, model=model,
                                     supports_vision=vision, input_mode=mode,
-                                    timeout_seconds=previous.timeout_seconds if previous else 30.0,
+                                    timeout_seconds=previous.timeout_seconds if previous else 180.0,
                                     image_max_edge=previous.image_max_edge if previous else 2048)
             except (ValidationError, ConfigError):
                 console.output('配置无效：URL 必须是不含凭据/查询参数的 HTTP(S) API root；Model 必填；文本不能含控制字符。请重新输入。')

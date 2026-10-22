@@ -308,6 +308,29 @@ main {
     padding: 6px 11px;
     font-size: 11px;
 }
+.batch-results {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 28px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--line);
+}
+.batch-result-card {
+    display: grid;
+    gap: 7px;
+    width: 100%;
+    text-align: left;
+    padding: 15px 18px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: #fbfaff;
+    color: var(--ink);
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+.batch-result-card[aria-pressed="true"] { border-color: var(--purple); }
+.batch-answer { color: var(--purple); font-size: 16px; }
+.batch-reason { color: #80788c; font-size: 12px; }
 .hero-panel {
     display: flex;
     position: relative;

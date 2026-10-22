@@ -1,5 +1,5 @@
 // 只读取候选题组的语义标签和可见文字；不读取 HTML、输入值或浏览器存储。
-() => {
+(body, allQuestions = false) => {
   const visible = element => {
     if (!element || element.closest('[hidden], [aria-hidden="true"], [inert]')) return false;
     for (let node = element; node; node = node.parentElement) {
@@ -8,13 +8,26 @@
     }
     return element.getClientRects().length > 0;
   };
+  const inViewport = element => {
+    const r = element.getBoundingClientRect();
+    return r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
+  };
+  const fullyVisible = element => {
+    const r = element.getBoundingClientRect();
+    return r.top >= 0 && r.left >= 0 && r.bottom <= innerHeight && r.right <= innerWidth;
+  };
   const text = element => {
     if (!visible(element)) return '';
     const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
     const parts = [];
     let node;
     while ((node = walker.nextNode())) {
-      if (visible(node.parentElement) && !node.parentElement.closest('script, style, template, input, textarea, select, button')) {
+      if (visible(node.parentElement) && !node.parentElement.closest('script, style, template, input, textarea, select, button, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="searchbox"]')) {
+        if (allQuestions && node.nodeValue.trim()) {
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          if ([...range.getClientRects()].some(r => r.top < 0 || r.left < 0 || r.bottom > innerHeight || r.right > innerWidth)) return '';
+        }
         parts.push(node.nodeValue);
       }
     }
@@ -52,8 +65,9 @@
       group.root = root;
     }
   }
-  let candidates = groups;
-  if (groups.length > 1) {
+  let candidates = allQuestions ? groups.filter(group => group.controls.some(inViewport)) : groups;
+  if (!candidates.length) return {error: 'no_question'};
+  if (!allQuestions && groups.length > 1) {
     const active = document.activeElement;
     const focused = groups.filter(group => active !== document.body && active !== document.documentElement &&
       group.root.contains(active));
@@ -61,11 +75,25 @@
       group.root.getAttribute('data-current') === 'true');
     candidates = focused.length === 1 ? focused : marked.length === 1 ? marked : groups;
   }
-  if (candidates.length !== 1) return {error: 'ambiguous_question'};
-  const group = candidates[0];
+  if (!allQuestions && candidates.length !== 1) return {error: 'ambiguous_question'};
+  if (allQuestions && (candidates.length > 10 || candidates.some((group, i) =>
+    candidates.some((other, j) => i !== j && (group.root.contains(other.root) || other.root.contains(group.root)))))) {
+    return {error: 'ambiguous_question'};
+  }
+  if (allQuestions) candidates.sort((a, b) => {
+    const left = a.root.getBoundingClientRect(), right = b.root.getBoundingClientRect();
+    return left.top - right.top || left.left - right.left;
+  });
+  const questions = [];
+  for (const group of candidates) {
+  if (allQuestions && group.controls.some(control => !fullyVisible(control))) return {error: 'incomplete_question'};
   const root = group.root;
   const legend = root.querySelector(':scope > legend');
   const heading = root.querySelector(':scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > [role="heading"], :scope > p');
+  if (allQuestions && ([legend, heading].some(element => element && visible(element) && !fullyVisible(element)) ||
+      group.controls.some(control => [...(control.labels || [])].some(label => visible(label) && !fullyVisible(label))))) {
+    return {error: 'incomplete_question'};
+  }
   const question = accessibleName(root) || text(legend) || text(heading);
   const options = group.controls.map(control => {
     const aria = accessibleName(control);
@@ -77,6 +105,8 @@
   if (question.length > 8000 || options.some(option => option.length > 2000) || options.length > 50) {
     return {error: 'too_large'};
   }
-  return {question_text: question, kind: group.kind, options,
-          hint: root.getAttribute('data-question-type') || ''};
+  questions.push({question_text: question, kind: group.kind, options,
+          hint: root.getAttribute('data-question-type') || ''});
+  }
+  return allQuestions ? {questions} : questions[0];
 }

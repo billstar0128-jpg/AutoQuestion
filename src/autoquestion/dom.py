@@ -5,6 +5,7 @@ import logging
 import threading
 
 from .browser_session import BrowserSession
+from .capture.browser import validated_dom_questions
 from .config import Config, load_llm_config
 from .llm.fake import FakeLLMProvider
 from .schemas import Question, QuestionType, format_answer, validate_answer_against_question
@@ -18,34 +19,47 @@ def make_dom_callback(config: Config, browser: BrowserSession,
         if stop.is_set():
             return
         report_status("EXTRACTING")
-        question = browser.extract_question()
+        question = browser.extract_question(all_questions=True)
         if stop.is_set():
             return
         answer_dom_question(config, question, stop, report_status)
     return callback
 
 
-def answer_dom_question(config: Config, question: Question, stop: threading.Event,
+def answer_dom_question(config: Config, question: Question | tuple[Question, ...], stop: threading.Event,
                         report_status: Callable[[str], None]) -> None:
     """共同的文本回答流程；调用方不得在本函数失败后重新获取图像。"""
     if stop.is_set():
         return
-    LOGGER.info("Question:\n%s", question.question_text)
-    if question.question_type not in (QuestionType.SINGLE_CHOICE, QuestionType.MULTIPLE_CHOICE, QuestionType.TRUE_FALSE):
-        LOGGER.info("已识别题型 %s，%d 个选项；当前尚不支持求解。",
-                    question.question_type.value, len(question.options))
-        for option in question.options:
-            LOGGER.info("[%d] %s", option.index, option.text)
-        return
+    # Acquisition enforces DOM origin; this reusable text-answer entry point also
+    # retains its historical MANUAL Question support.
+    questions = validated_dom_questions(question, require_dom=False)
     if config.llm_provider == "fake":
         provider = FakeLLMProvider()
     else:
         from .llm.openai_compatible import OpenAICompatibleProvider
         provider = OpenAICompatibleProvider(config.llm_config or load_llm_config())
     report_status("ANALYZING")
-    answer = provider.answer_question(question)
-    answer = validate_answer_against_question(question, answer)
-    if not stop.is_set():
+    results = []
+    for current in questions:
+        if stop.is_set():
+            return
+        LOGGER.info("Question:\n%s", current.question_text)
+        if current.question_type not in (QuestionType.SINGLE_CHOICE, QuestionType.MULTIPLE_CHOICE, QuestionType.TRUE_FALSE):
+            LOGGER.info("已识别题型 %s，%d 个选项；当前尚不支持求解。", current.question_type.value, len(current.options))
+            return
+        answer = validate_answer_against_question(current, provider.answer_question(current))
+        results.append({'question': current.model_dump(mode='json'), 'answer': answer.model_dump(mode='json')})
+    if stop.is_set():
+        return
+    if len(results) == 1:
         LOGGER.info("%s\nConfidence:\n%.0f%%", format_answer(answer), answer.confidence * 100,
-                    extra={'question_result': question.model_dump(mode='json'),
-                           'answer_result': answer.model_dump(mode='json')})
+                    extra={'question_result': results[0]['question'], 'answer_result': results[0]['answer']})
+    else:
+        # Answers are already strictly matched above; construct the public batch once.
+        from .schemas import AnswerResult
+        text = '\n\n'.join(f"第 {index} 题：{result['question']['question_text']}\n"
+                           f"{format_answer(AnswerResult.model_validate(result['answer']))}\n"
+                           f"Confidence:\n{result['answer']['confidence'] * 100:.0f}%"
+                           for index, result in enumerate(results, 1))
+        LOGGER.info("%s", text, extra={'question_results': results})

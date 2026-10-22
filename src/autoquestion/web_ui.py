@@ -51,6 +51,7 @@ class UIController:
         self.session_secret = None
         self.secret_scope = None
         self.history = []
+        self.result_sequence = 0
         self.events = []
         self.error = ''
         self.route = ''
@@ -105,7 +106,7 @@ class UIController:
 
     def configure(self, body):
         allowed = {'provider_profile', 'base_url', 'model', 'supports_vision', 'input_mode',
-                   'credential_mode', 'api_key'}
+                   'credential_mode', 'api_key', 'timeout_seconds'}
         if not isinstance(body, dict) or set(body) - allowed:
             raise UIError('配置字段无效。')
         with self.lock:
@@ -134,6 +135,7 @@ class UIController:
                         raise UIError('Base URL 只填 API 根地址，请去掉结尾的 /chat/completions。')
                     config = UserConfig(provider_profile=preset.id, protocol_provider=preset.protocol_provider,
                                         base_url=base_url, model=model,
+                                        timeout_seconds=body.get('timeout_seconds', 180.0),
                                         supports_vision=body.get('supports_vision', False),
                                         input_mode=body.get('input_mode', 'auto'),
                                         credential_mode='session')
@@ -245,9 +247,16 @@ class UIController:
 
     def record(self, record):
         with self.lock:
-            if hasattr(record, 'question_result') and hasattr(record, 'answer_result'):
-                self.history.insert(0, dict(question=record.question_result, answer=record.answer_result,
-                                           time=time.strftime('%H:%M:%S'), offline=self.active_protocol == 'fake'))
+            results = getattr(record, 'question_results', None)
+            if results is None and hasattr(record, 'question_result') and hasattr(record, 'answer_result'):
+                results = [dict(question=record.question_result, answer=record.answer_result)]
+            if results:
+                self.result_sequence += 1
+                timestamp = time.strftime('%H:%M:%S')
+                self.history[0:0] = [dict(question=item['question'], answer=item['answer'], time=timestamp,
+                                          offline=self.active_protocol == 'fake', batch_id=self.result_sequence,
+                                          batch_index=index, batch_total=len(results))
+                                     for index, item in enumerate(results, 1)]
                 del self.history[20:]
                 self.error = ''
             text = record.getMessage()

@@ -107,7 +107,7 @@ class SDKProviderTests(unittest.TestCase):
         with patch('autoquestion.llm.openai_compatible.OpenAI', return_value=client) as factory:
             result = OpenAICompatibleProvider(config()).answer_question(question or sample_question())
             factory.assert_called_once_with(api_key='test-api-key', base_url='https://example.invalid/v1',
-                                             timeout=30.0, max_retries=0)
+                                             timeout=180.0, max_retries=0)
         self.assertTrue(client.is_closed())
         return result
 
