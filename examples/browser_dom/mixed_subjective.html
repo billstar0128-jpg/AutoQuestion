@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutoQuestion · 客观与主观混合练习</title>
+  <style>
+    :root { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; color: #27213b; background: #f5f3fa; }
+    body { margin: 0; padding: 20px; }
+    main { max-width: 1000px; margin: auto; }
+    h1 { margin: 0 0 8px; font-size: 24px; }
+    p { margin: 5px 0 12px; font-size: 14px; line-height: 1.5; }
+    .questions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    fieldset { min-width: 0; margin: 0; padding: 10px 14px; border: 1px solid #d9d0ef; border-radius: 12px; background: white; }
+    legend { max-width: 100%; padding: 0 5px; font-size: 16px; font-weight: 600; }
+    label { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; }
+    input[type=radio],input[type=checkbox] { margin: 0; width: 16px; height: 16px; accent-color: #7860d8; }
+    input[type=text], [contenteditable] { display: inline-block; box-sizing: border-box; width: 105px; min-height: 26px; border: 1px solid #d9d0ef; border-radius: 4px; }
+    textarea { width: 95%; height: 35px; border: 1px solid #d9d0ef; }
+    @media (max-width: 650px) {
+      body { padding: 12px; }
+      h1 { font-size: 20px; }
+      .questions { gap: 8px; }
+      fieldset { padding: 7px 8px 9px; }
+      legend { font-size: 14px; }
+      label { font-size: 13px; gap: 5px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>客观与主观混合练习</h1>
+    <p>单选、多选、判断、填空、简答与解答六道题。按 F8 或手机 AQ 分别分析完整可见题目。页面不提交、不计分、不联网；文本输入内容不作为 DOM 题目读取。</p>
+    <div class="questions">
+      <fieldset>
+        <legend>1. 法国的首都是哪里？</legend>
+        <label><input type="radio" name="capital">A. 巴黎</label>
+        <label><input type="radio" name="capital">B. 伦敦</label>
+      </fieldset>
+      <fieldset>
+        <legend>2. 以下哪些是质数？</legend>
+        <label><input type="checkbox" name="primes">A. 2</label>
+        <label><input type="checkbox" name="primes">B. 3</label>
+        <label><input type="checkbox" name="primes">C. 4</label>
+      </fieldset>
+      <fieldset>
+        <legend>3. 地球绕太阳公转。</legend>
+        <label><input type="radio" name="orbit">A. 正确</label>
+        <label><input type="radio" name="orbit">B. 错误</label>
+      </fieldset>
+      <fieldset data-question-type="fill_blank" data-blank-count="2">
+        <legend>4. 填空题：分别写出两国首都。</legend>
+        <p>法国：<input type="text" aria-label="第一空">；英国：<span role="textbox" contenteditable="true" aria-label="第二空"></span>。</p>
+      </fieldset>
+      <fieldset data-question-type="short_answer">
+        <legend>5. 简答题：为什么白天能看到蓝色的天空？</legend>
+        <textarea aria-label="简答输入区"></textarea>
+      </fieldset>
+      <fieldset data-question-type="essay">
+        <legend>6. 解答题：求方程 2x + 3 = 9 的解。</legend>
+        <p>请写出推导步骤及最终结果。本题不需要在页面填写答案。</p>
+      </fieldset>
+    </div>
+  </main>
+</body>
+</html>

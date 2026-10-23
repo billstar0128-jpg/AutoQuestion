@@ -124,14 +124,18 @@
                   <p>
                     启动后，把题目窗口放到前台。<br />答案会显示在这里，不需要再截图上传。
                   </p>
-                  <span class="empty-caption">单选 · 多选 · 判断题</span>
+                  <span class="empty-caption">单选 · 多选 · 判断 · 填空 · 简答 / 解答</span>
                 </div>
                 <div id="answer-result" class="answer-result" hidden>
                   <div id="batch-results" class="batch-results" aria-label="本次识别的各题答案" hidden></div>
                   <h3 id="question-text"></h3>
+                  <p id="question-kind" class="mini-label"></p>
                   <div id="question-options" class="question-options"></div>
                   <div class="answer-block">
                     <span>参考答案</span><strong id="answer-text"></strong>
+                    <div id="blank-answers" class="blank-answers" hidden></div>
+                    <button id="copy-answer" class="button outline copy-answer" type="button" disabled>复制答案</button>
+                    <p class="copy-help">可选择文字复制；复制后自行粘贴到需要的位置。</p>
                     <p id="answer-reason"></p>
                     <small id="answer-confidence"></small>
                   </div>
@@ -458,7 +462,7 @@
                 <div>
                   <h2>题目置前台，按 F8</h2>
                   <p>
-                    支持单选、多选和判断。不要让工作台自己成为要分析的前台题目。ESC
+                    支持单选、多选、判断、填空和简答/解答，答案可选择和复制。不要让工作台自己成为要分析的前台题目。ESC
                     停止服务，界面可以重新启动。
                   </p>
                 </div>

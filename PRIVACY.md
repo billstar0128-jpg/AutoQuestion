@@ -4,13 +4,15 @@ Windows App 的界面服务只监听 127.0.0.1 随机端口，在你点击启动
 
 Android App 由用户授权悬浮窗和 MediaProjection 屏幕共享。只有点击悬浮按钮才把一帧画面用于识题请求，截图不写入文件、不写入相册，也不请求相册或存储权限。共享会话期间 Android 会持续向内存 Surface 投影，非触发帧立即丢弃；停止服务后释放投影、Surface、悬浮窗和网络任务。Key 由 Android Keystore 的 AES-GCM 密钥加密保存，本地备份关闭，不返回给网页。图片直接发送给用户设置的 HTTPS Provider；屏幕上的个人信息也可能包含在图片中。手机锁屏、系统停止共享或主动停止后需重新授权。详见 [Android 使用说明](docs/ANDROID.md)。
 
+两端只在用户点击复制或执行文字选择菜单的复制动作时，把所选答案写入系统剪贴板，不读取原有剪贴板、不自动粘贴到其他应用。Android 的答案复制标记为敏感内容，以减少系统预览。主动复制之后，操作系统剪贴板、剪贴板历史或目标应用可能继续保留这些文字；清空记录、停止或退出本 App 不会清空系统剪贴板，也不能删除已粘贴到其他应用的文字。
+
 AutoQuestion 不运行开发者中央服务器，没有 telemetry、analytics、crash upload、更新信标、截图历史存储或自动上传浏览历史。按 F8 或点击手机悬浮按钮才启动一次分析，BUSY/debounce 不会排队追加分析。同屏多题 Vision 使用一次图片请求，DOM 分别发送各题文本。
 
 | 路径 | 发给用户所选 Provider 的内容 |
 |---|---|
 | 固定 demo + Fake | 无网络请求，只回答内置精确匹配题 |
 | demo + 真实 Provider | 固定 MANUAL 示例题的结构化文本 |
-| DOM + 真实 Provider | 当前题干、选项、题型及来源 DOM 标识 |
+| DOM + 真实 Provider | 当前题干、选项（主观题为空）、题型、填空数量及来源 DOM 标识，不含输入框已填值 |
 | Vision / AUTO fallback | F8 目标窗口对应屏幕矩形的内存 PNG，以及图像分析协议 |
 
 AUTO 默认不打开浏览器；WPS、PDF 阅读器、记事本和其他桌面进程直接 Vision。已配对的 Chrome / Edge 可通过可选扩展 DOM；显式打开的受管理 Demo 继续使用自有 Playwright 会话。不会接管个人浏览器 profile、连接个人调试端口，或读取 Cookie、LocalStorage、SessionStorage、密码/输入值、认证头、整页 HTML。

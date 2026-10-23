@@ -38,9 +38,17 @@ class Question(SchemaModel):
     question_type: QuestionType
     options: tuple[Option, ...] = ()
     source_type: SourceType = SourceType.MANUAL
+    blank_count: Annotated[int, Field(strict=True, ge=1, le=20)] | None = None
 
     @model_validator(mode="after")
     def validate_options(self) -> "Question":
+        if self.question_type in (QuestionType.FILL_BLANK, QuestionType.SHORT_ANSWER):
+            if self.options:
+                raise ValueError("填空、简答和解答题不使用选项。")
+            if self.question_type == QuestionType.FILL_BLANK and self.blank_count is None:
+                raise ValueError("填空题必须明确空的数量。")
+        if self.question_type != QuestionType.FILL_BLANK and self.blank_count is not None:
+            raise ValueError("仅填空题可以指定 blank_count。")
         if self.question_type in (QuestionType.SINGLE_CHOICE, QuestionType.MULTIPLE_CHOICE) and len(self.options) < 2:
             raise ValueError("单选/多选题至少需要两个选项。")
         if self.question_type == QuestionType.TRUE_FALSE and len(self.options) != 2:
@@ -65,10 +73,21 @@ class AnswerResult(SchemaModel):
     selected_indices: tuple[Index, ...] = ()
     selected_labels: tuple[NonEmptyText | None, ...] = ()
     selected_texts: tuple[NonEmptyText, ...] = ()
+    answer_text: Annotated[NonEmptyText, Field(max_length=12000)] | None = None
+    blank_answers: Annotated[tuple[Annotated[NonEmptyText, Field(max_length=2000)], ...], Field(max_length=20)] = ()
 
     @model_validator(mode="after")
     def validate_answer_shape(self) -> "AnswerResult":
-        if self.question_type == QuestionType.MULTIPLE_CHOICE:
+        if self.question_type in (QuestionType.FILL_BLANK, QuestionType.SHORT_ANSWER):
+            if any(value is not None for value in (self.selected_index, self.selected_label, self.selected_text)) or (
+                    self.selected_indices or self.selected_labels or self.selected_texts):
+                raise ValueError("主观题不能混用选项答案字段。")
+            if self.question_type == QuestionType.FILL_BLANK:
+                if not self.blank_answers or self.answer_text is not None:
+                    raise ValueError("填空答案必须使用非空 blank_answers，不混用 answer_text。")
+            elif self.answer_text is None or self.blank_answers:
+                raise ValueError("简答和解答题必须使用 answer_text，不混用 blank_answers。")
+        elif self.question_type == QuestionType.MULTIPLE_CHOICE:
             if not self.selected_indices:
                 raise ValueError("多选答案必须选择至少一个选项。")
             if len(self.selected_indices) != len(self.selected_labels) or len(self.selected_indices) != len(self.selected_texts):
@@ -82,6 +101,9 @@ class AnswerResult(SchemaModel):
                 raise ValueError("非多选答案必须包含 selected_text。")
             if self.question_type in (QuestionType.SINGLE_CHOICE, QuestionType.TRUE_FALSE) and self.selected_index is None:
                 raise ValueError("单选/判断答案必须包含 selected_index。")
+        if self.question_type not in (QuestionType.FILL_BLANK, QuestionType.SHORT_ANSWER) and (
+                self.answer_text is not None or self.blank_answers):
+            raise ValueError("选择或判断答案不能混用主观题字段。")
         if len(self.selected_indices) != len(set(self.selected_indices)):
             raise ValueError("多选索引不能重复。")
         return self
@@ -94,6 +116,10 @@ class AnswerValidationError(ValueError):
 def validate_answer_against_question(question: Question, answer: AnswerResult) -> AnswerResult:
     """严格拒绝矛盾字段；index 是选项标识，不是列表下标。"""
     try:
+        question = Question.model_validate(question.model_dump(mode="python", warnings=False))
+    except (ValidationError, AttributeError, TypeError):
+        raise AnswerValidationError("题目结构无效。") from None
+    try:
         # Provider 也可能返回 model_copy/model_construct 的未校验对象；先拒绝缺项、
         # 数组长度不一致和重复项，避免 zip 截短或 set 去重掩盖错误。
         answer = AnswerResult.model_validate(answer.model_dump(mode="python", warnings=False))
@@ -101,6 +127,13 @@ def validate_answer_against_question(question: Question, answer: AnswerResult) -
         raise AnswerValidationError("答案结构无效。") from None
     if question.question_type != answer.question_type:
         raise AnswerValidationError("答案题型与原题不一致。")
+    if question.question_type in (QuestionType.FILL_BLANK, QuestionType.SHORT_ANSWER):
+        if question.options or (question.question_type == QuestionType.FILL_BLANK and (
+                question.blank_count is None or len(answer.blank_answers) != question.blank_count)):
+            raise AnswerValidationError("主观题答案结构或填空数量与原题不一致。")
+        if question.question_type == QuestionType.SHORT_ANSWER and question.blank_count is not None:
+            raise AnswerValidationError("简答和解答题不能包含填空数量。")
+        return answer
     if question.question_type == QuestionType.MULTIPLE_CHOICE:
         options = {option.index: option for option in question.options}
         for index, label, text in zip(answer.selected_indices, answer.selected_labels, answer.selected_texts):
@@ -117,8 +150,6 @@ def validate_answer_against_question(question: Question, answer: AnswerResult) -
             "selected_labels": tuple(option.label for option in ordered),
             "selected_texts": tuple(option.text for option in ordered),
         })
-    if question.question_type not in (QuestionType.SINGLE_CHOICE, QuestionType.TRUE_FALSE):
-        raise AnswerValidationError("本轮仅支持单选、多选和判断题的一致性验证。")
     option = next((item for item in question.options if item.index == answer.selected_index), None)
     if option is None:
         raise AnswerValidationError("答案 selected_index 不存在于原题选项。")
@@ -131,7 +162,11 @@ def validate_answer_against_question(question: Question, answer: AnswerResult) -
 
 def format_answer(answer: AnswerResult) -> str:
     """显示字母或实际文本，保留模型对象中的完整答案。"""
-    if answer.question_type == QuestionType.MULTIPLE_CHOICE:
+    if answer.question_type == QuestionType.FILL_BLANK:
+        value = '\n'.join(f"第 {index} 空：{text}" for index, text in enumerate(answer.blank_answers, 1))
+    elif answer.question_type == QuestionType.SHORT_ANSWER:
+        value = answer.answer_text
+    elif answer.question_type == QuestionType.MULTIPLE_CHOICE:
         value = "、".join(label if label is not None else text
                          for label, text in zip(answer.selected_labels, answer.selected_texts))
     else:

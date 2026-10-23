@@ -166,6 +166,92 @@ class BrowserDOMTests(unittest.TestCase):
                           ['木星', '地球', '火星'], ['2', '3', '4'], ['正确', '错误']])
         self.assertEqual(self.page.locator('input:checked').count(), 0)
 
+    def test_mixed_subjective_questions_do_not_read_filled_input_values(self):
+        fixture = Path(__file__).resolve().parents[1] / 'examples/browser_dom/mixed_subjective.html'
+        self.page.set_viewport_size({'width': 1200, 'height': 900})
+        self.page.set_content(fixture.read_text(encoding='utf-8'))
+        self.page.evaluate("""() => {
+          document.querySelector('input[type=text]').value = 'synthetic-private-input';
+          document.querySelector('textarea').value = 'synthetic-private-textarea';
+          document.querySelector('[contenteditable]').textContent = 'synthetic-private-edit';
+          for (const field of document.querySelectorAll('input[type=text],textarea,[contenteditable]')) {
+            for (const name of ['value','textContent','innerText']) Object.defineProperty(field, name,
+              {get() { throw new Error('must not read user answer'); }});
+          }
+        }""")
+        questions = self.adapter.extract_questions()
+        self.assertEqual([q.question_type.value for q in questions],
+                         ['single_choice', 'multiple_choice', 'true_false', 'fill_blank', 'short_answer', 'short_answer'])
+        self.assertEqual(questions[3].blank_count, 2)
+        self.assertIn('[空 1]', questions[3].question_text)
+        self.assertIn('[空 2]', questions[3].question_text)
+        self.assertTrue(all(not q.options for q in questions[3:]))
+        self.assertNotIn('synthetic-private', '\n'.join(q.model_dump_json() for q in questions))
+        self.assertEqual(self.page.locator(':checked').count(), 0)
+
+    def test_subjective_without_input_controls_and_explicit_caption(self):
+        self.page.set_content('''<fieldset data-question-type="fill_blank" data-blank-count="2"><legend>两数分别为___、___。</legend></fieldset>
+        <fieldset><legend>简答题：解释蒸发。</legend></fieldset>
+        <fieldset data-question-type="short_answer"><legend>解答题：计算 1 + 1。</legend></fieldset>''')
+        questions = self.adapter.extract_questions()
+        self.assertEqual([q.question_type.value for q in questions], ['fill_blank', 'short_answer', 'short_answer'])
+        self.assertEqual(questions[0].blank_count, 2)
+        self.page.set_content('''<section data-question-type="short_answer" data-question-stem>解释光合作用。</section>
+        <fieldset data-question-type="fill_blank"><legend>写出两种颜色：</legend><span data-blank>___</span>、<span data-blank>___</span></fieldset>''')
+        questions = self.adapter.extract_questions()
+        self.assertEqual([q.question_type.value for q in questions], ['short_answer', 'fill_blank'])
+        self.assertEqual(questions[1].blank_count, 2)
+
+    def test_unknown_or_incomplete_subjective_never_silently_drops_from_batch(self):
+        choice = '<fieldset><legend>Single?</legend><label><input type=radio name=q>A</label><label><input type=radio name=q>B</label></fieldset>'
+        for subjective in (
+            '<fieldset data-question-type="fill_blank"><legend>填空题：两个数字___、___。</legend></fieldset>',
+            '<fieldset data-question-type="fill_blank" data-blank-count="2"><legend>填空题：一个空。</legend><input type=text></fieldset>',
+            '<fieldset data-question-id="essay"><legend>请说明原因。</legend><textarea>synthetic-private</textarea></fieldset>',
+            '<fieldset data-question-type="unsupported"><legend>未知题型。</legend></fieldset>',
+            '<fieldset data-question-type="fill_blank"><legend>填空题：___、___。</legend><span data-blank>___</span>'
+            '<span data-blank style="position:absolute;top:2000px">___</span></fieldset>',
+        ):
+            with self.subTest(subjective=subjective[:70]):
+                self.page.set_content(choice + subjective)
+                with self.assertRaises(BrowserExtractionError):
+                    self.adapter.extract_questions()
+
+    def test_login_and_search_fields_are_not_subjective_questions(self):
+        self.page.set_content('''<fieldset><legend>Single?</legend><label><input type=radio name=q>A</label><label><input type=radio name=q>B</label></fieldset>
+        <fieldset><legend>Login</legend><input type=text><input type=password></fieldset>
+        <fieldset role=search><legend>Search</legend><input type=search></fieldset>''')
+        self.assertEqual(len(self.adapter.extract_questions()), 1)
+
+    def test_subjective_aria_group_name_does_not_drop_conditions_or_subquestions(self):
+        self.page.set_content('''<fieldset data-question-type="short_answer" aria-label="第4题">
+        <legend>解答题：某车以恒定速度行驶。</legend><p data-question-stem>已知 2 小时行驶 100 千米。</p>
+        <p>求平均速度，并说明计算过程。</p><textarea>synthetic-private-answer</textarea></fieldset>''')
+        question = self.adapter.extract_questions()[0]
+        self.assertIn('2 小时行驶 100 千米', question.question_text)
+        self.assertIn('求平均速度', question.question_text)
+        self.assertIn('某车以恒定速度', question.question_text)
+        self.assertNotIn('synthetic-private', question.question_text)
+        self.page.set_content('<fieldset data-question-type="short_answer" aria-label="第4题"><legend>解答题：计算车速。</legend>'
+                              '<p style="position:absolute;top:2000px">关键条件：2小时行驶100千米。</p></fieldset>')
+        with self.assertRaises(BrowserExtractionError):
+            self.adapter.extract_questions()
+
+    def test_subjective_visual_conditions_force_whole_batch_acquisition_failure(self):
+        choice = '<fieldset><legend>Single?</legend><label><input type=radio name=q>A</label><label><input type=radio name=q>B</label></fieldset>'
+        for visual in ('<canvas width=200 height=80></canvas>', '<img width=200 height=80 alt="必要题图">',
+                       '<svg width=200 height=80><circle cx=30 cy=30 r=20></circle></svg>',
+                       '<video width=200 height=80></video>', '<object width=200 height=80></object>',
+                       '<iframe width=200 height=80 srcdoc="<p>Necessary material</p>"></iframe>',
+                       '<embed src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%2280%22%3E%3C/svg%3E" type="image/svg+xml" width=200 height=80>'):
+            with self.subTest(visual=visual):
+                self.page.set_content(choice + '<fieldset data-question-type="short_answer"><legend>解答题：根据图示计算。</legend>' + visual + '</fieldset>')
+                with self.assertRaises(BrowserExtractionError):
+                    self.adapter.extract_questions()
+        self.page.set_content('<fieldset data-question-type="short_answer"><legend>简答题：解释蒸发。</legend>'
+                              '<svg aria-hidden=true width=20 height=20></svg></fieldset>')
+        self.assertEqual(len(self.adapter.extract_questions()), 1)
+
     def test_batch_rejects_incomplete_mixed_container_and_more_than_ten(self):
         bodies = [
             '<fieldset><legend>Mixed?</legend><label><input type=radio name=x>A</label><label><input type=radio name=x>B</label>'

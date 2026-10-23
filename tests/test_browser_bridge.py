@@ -82,6 +82,23 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual([[o.text for o in q.options] for q in results[0]], [['One', 'Two'], ['Three', 'Four']])
         self.assertEqual(verify.call_count, 2)
 
+    def test_subjective_roundtrip_keeps_blank_count_and_empty_options(self):
+        client = self.ready()
+        results = []
+        worker = threading.Thread(target=lambda: results.append(self.bridge.extract_for_target(
+            self.target, Mock(), self.bridge.pin(self.target), all_questions=True)))
+        worker.start()
+        request = json.loads(client.recv(timeout=2))
+        client.send(json.dumps(dict(v=1, type='result', request=request['request'], status='ok', questions=[
+            dict(kind='radio', stem='Single?', options=['A. One', 'B. Two']),
+            dict(kind='fill_blank', stem='Fill two blanks.', options=[], blank_count=2),
+            dict(kind='short_answer', stem='Explain.', options=[])])))
+        worker.join(2)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual([q.question_type.value for q in results[0]], ['single_choice', 'fill_blank', 'short_answer'])
+        self.assertEqual(results[0][1].blank_count, 2)
+        self.assertTrue(all(not q.options for q in results[0][1:]))
+
     def test_invalid_token_and_invalid_origin(self):
         with self.assertRaises(ConnectionClosed):
             self.client('x' * 32).recv(timeout=2)

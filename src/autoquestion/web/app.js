@@ -14,7 +14,7 @@ const preview =
   !token && (!loopback || location.pathname.includes("/preview/"));
 const locked = !token && !preview;
 const appDownload =
-  "https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.3.0/AutoQuestion-0.3.0-Windows-x64.zip";
+  "https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.4.0/AutoQuestion-0.4.0-Windows-x64.zip";
 let providers = [];
 let state = {
   config: null,
@@ -27,6 +27,7 @@ let state = {
 let pollTimer, toastTimer, pairTimer;
 let pending = false;
 let selectedResult = 0;
+let renderedResult;
 
 function node(tag, className, text) {
   const element = document.createElement(tag);
@@ -184,6 +185,10 @@ function fillSettings(config) {
   examples();
 }
 function answerLabel(answer) {
+  if (answer.question_type === "fill_blank") {
+    return answer.blank_answers.map((text, index) => `第 ${index + 1} 空：${text}`).join("\n");
+  }
+  if (answer.question_type === "short_answer") return answer.answer_text;
   if (answer.question_type === "multiple_choice") {
     return answer.selected_texts
       .map((text, index) =>
@@ -197,10 +202,37 @@ function answerLabel(answer) {
     ? `${answer.selected_label} · ${answer.selected_text}`
     : answer.selected_text;
 }
+async function copyAnswer(text) {
+  // Only invoked by a user's button click. Never read clipboard contents.
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+    await navigator.clipboard.writeText(text);
+  } catch (_) {
+    const input = node("textarea", "clipboard-fallback");
+    input.value = text;
+    input.readOnly = true;
+    input.setAttribute("aria-label", "待复制的答案");
+    const focused = document.activeElement;
+    document.body.append(input);
+    input.select();
+    let copied = false;
+    try { copied = document.execCommand("copy"); } catch (_) { /* Manual selection remains available. */ }
+    input.remove();
+    if (focused?.focus) focused.focus({ preventScroll: true });
+    if (!copied) { toast("复制未完成，请选择答案文字后按 Ctrl+C。"); return; }
+  }
+  toast("答案已复制，可粘贴到其他应用。");
+}
 function showResult(result) {
+  // Polling must not replace unchanged answer nodes and interrupt text selection.
+  const signature = JSON.stringify(result ?? null);
+  if (renderedResult === signature) return;
+  renderedResult = signature;
   $("empty-result").hidden = !!result;
   $("answer-result").hidden = !result;
   if (!result) {
+    $("copy-answer").disabled = true;
+    $("copy-answer").onclick = null;
     $("result-source").textContent = "等待输入";
     return;
   }
@@ -221,14 +253,17 @@ function showResult(result) {
         node("span", "batch-reason", item.answer.short_reason),
       );
       card.addEventListener("click", () => {
-        selectedResult = state.history.indexOf(item);
-        showResult(item);
+        selectedResult = state.history.findIndex((current) =>
+          current.batch_id === item.batch_id && current.batch_index === item.batch_index);
+        showResult(state.history[selectedResult]);
       });
       $("batch-results").append(card);
     });
   }
   const { question, answer } = result;
   $("question-text").textContent = question.question_text;
+  $("question-kind").textContent = ({ single_choice: "单选", multiple_choice: "多选",
+    true_false: "判断", fill_blank: "填空", short_answer: "简答 / 解答" })[question.question_type] || "";
   $("result-source").textContent =
     question.source_type === "MANUAL"
       ? result.offline
@@ -236,7 +271,7 @@ function showResult(result) {
         : "固定文本 Demo"
       : `${question.source_type} 输入`;
   $("question-options").replaceChildren();
-  const indices = answer.selected_indices.length
+  const indices = answer.selected_indices?.length
     ? answer.selected_indices
     : [answer.selected_index];
   question.options.forEach((option) => {
@@ -251,6 +286,25 @@ function showResult(result) {
     $("question-options").append(row);
   });
   $("answer-text").textContent = answerLabel(answer);
+  const subjective = ["fill_blank", "short_answer"].includes(answer.question_type);
+  $("answer-text").classList.toggle("subjective-answer", subjective);
+  $("answer-text").hidden = answer.question_type === "fill_blank";
+  $("blank-answers").hidden = answer.question_type !== "fill_blank";
+  $("blank-answers").replaceChildren();
+  if (answer.question_type === "fill_blank") {
+    answer.blank_answers.forEach((text, index) => {
+      const row = node("div", "blank-answer-row");
+      const copy = node("button", "text-button", `复制第 ${index + 1} 空`);
+      copy.type = "button";
+      copy.addEventListener("click", () => copyAnswer(text));
+      row.append(node("span", "blank-answer-label", `第 ${index + 1} 空`),
+                 node("span", "blank-answer-text", text), copy);
+      $("blank-answers").append(row);
+    });
+  }
+  $("copy-answer").disabled = false;
+  $("copy-answer").textContent = answer.question_type === "fill_blank" ? "复制整题答案" : "复制答案";
+  $("copy-answer").onclick = () => copyAnswer(answerLabel(answer));
   $("answer-reason").textContent = answer.short_reason;
   $("answer-confidence").textContent =
     `模型给出的置信度 ${Math.round(answer.confidence * 100)}% · 不代表实际正确率`;
@@ -282,7 +336,7 @@ function render() {
     "busy",
     state.active && state.status !== "READY",
   );
-  $("version").textContent = "v" + (state.version || "0.3.0");
+  $("version").textContent = "v" + (state.version || "0.4.0");
   $("start-button").textContent = preview
     ? "下载 App 后开始 →"
     : state.active

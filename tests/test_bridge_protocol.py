@@ -22,6 +22,9 @@ class ProtocolTests(unittest.TestCase):
             dict(v=VERSION, type='result', request='a' * 32, status='ok', questions=[
                 dict(kind='radio', stem='Single?', options=['One', 'Two']),
                 dict(kind='checkbox', stem='Multiple?', options=['Three', 'Four'])]),
+            dict(v=VERSION, type='result', request='a' * 32, status='ok', questions=[
+                dict(kind='fill_blank', stem='Fill two blanks.', options=[], blank_count=2),
+                dict(kind='short_answer', stem='Explain.', options=[])]),
         ]:
             with self.subTest(kind=message['type']):
                 self.assertEqual(decode_message(encode_message(message)), message)
@@ -50,6 +53,19 @@ class ProtocolTests(unittest.TestCase):
         with self.assertRaises(ProtocolError):
             decode_message(encode_message(dict(v=VERSION, type='result', request='a' * 32,
                                                status='ok', question=question, questions=[question])))
+
+    def test_subjective_metadata_rejects_ambiguous_counts_or_choice_fields(self):
+        for question in (
+            dict(kind='fill_blank', stem='Fill.', options=[]),
+            dict(kind='fill_blank', stem='Fill.', options=[], blank_count=True),
+            dict(kind='fill_blank', stem='Fill.', options=[], blank_count=0),
+            dict(kind='fill_blank', stem='Fill.', options=[], blank_count=21),
+            dict(kind='fill_blank', stem='Fill.', options=['A', 'B'], blank_count=2),
+            dict(kind='short_answer', stem='Explain.', options=[], blank_count=1),
+            dict(kind='short_answer', stem='Explain.', options=['A', 'B']),
+        ):
+            with self.subTest(question=question), self.assertRaises(ProtocolError):
+                decode_message(encode_message(dict(v=VERSION, type='result', request='a' * 32, status='ok', question=question)))
 
 
 if __name__ == '__main__':

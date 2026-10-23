@@ -65,13 +65,16 @@ class SchemaTests(unittest.TestCase):
         with self.assertRaises(AnswerValidationError):
             validate_answer_against_question(sample_question(None), AnswerResult(**answer_data()))
 
-    def test_other_types_are_expressible_but_not_solved(self):
+    def test_subjective_answers_use_separate_text_and_ordered_blanks(self):
         for kind in (QuestionType.FILL_BLANK, QuestionType.SHORT_ANSWER):
-            question = Question(question_text="示例", question_type=kind)
-            answer = AnswerResult(question_type=kind, selected_text="示例答案", confidence=0.5,
-                                  short_reason="仅测试结构。")
-            with self.assertRaises(AnswerValidationError):
-                validate_answer_against_question(question, answer)
+            fill = kind == QuestionType.FILL_BLANK
+            question = Question(question_text="示例", question_type=kind, blank_count=1 if fill else None)
+            data = {'blank_answers': ['示例答案']} if fill else {'answer_text': '步骤一\n最终结论'}
+            answer = AnswerResult(question_type=kind, confidence=0.5, short_reason="示例理由。", **data)
+            self.assertEqual(validate_answer_against_question(question, answer), answer)
+            with self.assertRaises(ValidationError):
+                AnswerResult(question_type=kind, selected_text="不能把主观题当选项", confidence=0.5,
+                             short_reason="错误字段。", **data)
 
 
 if __name__ == "__main__":

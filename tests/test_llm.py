@@ -161,11 +161,11 @@ class SDKProviderTests(unittest.TestCase):
             with self.subTest(body=body), self.assertRaises(LLMResponseParseError):
                 self.invoke(lambda request: httpx.Response(200, json=body))
 
-    def test_unsupported_question_never_creates_client(self):
+    def test_invalid_question_never_creates_client(self):
         with patch('autoquestion.llm.openai_compatible.OpenAI') as client:
             with self.assertRaises(LLMProviderError):
                 OpenAICompatibleProvider(config()).answer_question(
-                    Question(question_text='描述题', question_type='short_answer'))
+                    Question(question_text='填空示例', question_type='fill_blank', blank_count=1).model_copy(update={'blank_count': None}))
             client.assert_not_called()
 
     def test_sdk_debug_logging_is_suppressed(self):

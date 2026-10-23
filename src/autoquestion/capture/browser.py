@@ -76,6 +76,13 @@ def question_from_dom(data: dict) -> Question:
         }
         raise BrowserExtractionError(messages.get(data["error"], "页面题目范围过大，无法可靠提取。"))
     try:
+        if data["kind"] in ('fill_blank', 'short_answer'):
+            if data['options'] != []:
+                raise BrowserExtractionError("主观题不能混入选择题选项。")
+            fields = dict(question_text=data['question_text'], question_type=data['kind'], source_type=SourceType.DOM, options=[])
+            if 'blank_count' in data:
+                fields['blank_count'] = data['blank_count']
+            return validated_dom_question(Question(**fields))
         options = parse_options(data["options"])
         words = {option.text.casefold() for option in options}
         if data["kind"] == "checkbox":

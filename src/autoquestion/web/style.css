@@ -330,6 +330,29 @@ main {
 }
 .batch-result-card[aria-pressed="true"] { border-color: var(--purple); }
 .batch-answer { color: var(--purple); font-size: 16px; }
+.batch-answer {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    white-space: pre-wrap;
+}
+.answer-block .subjective-answer {
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.8;
+    color: var(--ink);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    user-select: text;
+}
+.blank-answers { display: grid; gap: 12px; margin-top: 12px; }
+.blank-answer-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: start; }
+.blank-answer-label { color: var(--muted); font-size: 12px; }
+.blank-answer-text { white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.copy-answer { margin-top: 16px; }
+.copy-help { color: var(--muted); font-size: 11px; }
+.clipboard-fallback { position: fixed; top: -10000px; left: 0; }
 .batch-reason { color: #80788c; font-size: 12px; }
 .hero-panel {
     display: flex;

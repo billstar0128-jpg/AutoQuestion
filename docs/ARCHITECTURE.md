@@ -47,6 +47,8 @@ Provider Profile (brand / editable defaults)
 
 注册表与适配器分离。真实请求是 Chat Completions，使用官方 OpenAI Python SDK 的 base_url；Text 与 Vision 共用错误处理、有限 JSON 解析与一致性验证。Vision 一次图片请求返回 1～10 个独立 Question/Answer（results 数组），不追加文本请求；兼容旧单题对象。DOM 分别调用 Text Provider，全部验证后一次发布，失败不再转 Vision。Model supports_vision 是本次模型配置，不是品牌属性。
 
+0.4.0 将 `fill_blank` 与 `short_answer` 接入完整流程。主观题 `options=[]`；填空的 `blank_count` 为 1～20，答案用 `blank_answers` 且严格匹配空数；简答/解答用 `answer_text`（最多 12000 字符）。主观答案不能包含选项字段，客观答案不能混入主观字段。`short_reason` 仍为最多 200 字符的简要说明，不代替主观正文。复制以界面主动事件为边界，纯文本直接进入系统 Clipboard；不增加自动输入或页面写操作。
+
 ## Android
 
 原生 Java App 使用独立的 HTTPS Chat Completions 客户端，共用同屏多题 JSON 协议，不依赖 Windows 服务。MediaProjection 与 mediaProjection 类型前台服务持有一份捕获会话，悬浮按钮点击后才编码一帧并请求。Android Keystore 保存加密密钥，截图和答案只在内存中。服务停止时释放悬浮窗、VirtualDisplay、ImageReader、MediaProjection 和请求。完整操作与系统限制见 [Android](ANDROID.md)。

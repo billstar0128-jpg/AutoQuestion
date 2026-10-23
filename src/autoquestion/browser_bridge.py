@@ -139,7 +139,8 @@ class BrowserBridge:
         verify()
         values = reply.get('questions', [reply.get('question')])
         questions = validated_dom_questions(tuple(
-            question_from_dom(dict(kind=data['kind'], question_text=data['stem'], options=data['options']))
+            question_from_dom(dict(kind=data['kind'], question_text=data['stem'], options=data['options']) |
+                              ({'blank_count': data['blank_count']} if 'blank_count' in data else {}))
             for data in values))
         if all_questions:
             return questions

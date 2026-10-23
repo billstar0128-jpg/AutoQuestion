@@ -17,7 +17,7 @@ from autoquestion.dom import answer_dom_question
 from autoquestion.llm.base import BaseLLMProvider, LLMProviderError, LLMResponseParseError
 from autoquestion.llm.fake import FakeLLMProvider, demo_question
 from autoquestion.router import InputRouter
-from autoquestion.schemas import AnswerValidationError, SourceType, VisionAnalysisResult, Question, Option
+from autoquestion.schemas import AnswerResult, AnswerValidationError, SourceType, VisionAnalysisResult, Question, Option
 from autoquestion.vision import VisionWorkflow
 from test_capture import synthetic_image
 from test_vision import vision_payload
@@ -103,6 +103,20 @@ class RouterTests(unittest.TestCase):
         self.browser.extract_for_target.return_value = (self.question, self.multiple_question().model_copy(update={'options': ()}))
         self.assertIn('Fallback: VISION', self.run_job())
         self.provider.answer_question.assert_not_called()
+
+    def test_subjective_text_answers_never_trigger_vision_fallback(self):
+        fill = Question(question_text='Fill two blanks.', question_type='fill_blank', source_type='DOM', blank_count=2)
+        self.browser.extract_for_target.return_value = fill
+        self.provider.answer_question.return_value = AnswerResult(question_type='fill_blank', blank_answers=['one', 'two'],
+                                                                confidence=0.9, short_reason='Synthetic.')
+        self.assertIn('one', self.run_job())
+        self.assert_no_vision()
+        self.provider.answer_question.return_value = AnswerResult(question_type='fill_blank', blank_answers=['only one'],
+                                                                confidence=0.9, short_reason='Synthetic.')
+        text = self.run_job()
+        self.assertIn('Status: ERROR', text)
+        self.assertNotIn('Fallback:', text)
+        self.assert_no_vision()
 
     def test_non_browser_never_reads_background_dom(self):
         self.browser.owns_target.return_value = False
@@ -345,6 +359,35 @@ class BrowserRoutingTests(unittest.TestCase):
         self.assertEqual([q.question_type.value for q in questions], ['single_choice', 'multiple_choice'])
         self.assertEqual([q.question_text for q in questions], ['法国的首都是哪里？', '以下哪些属于编程语言？'])
         self.assertEqual(self.browser._call(lambda: self.browser._adapter.page.locator(':checked').count()), 0)
+
+    def test_visible_incomplete_subjective_forces_whole_screen_fallback_before_any_text_answer(self):
+        self.browser._call(lambda: self.browser._adapter.page.set_content(
+            '<fieldset><legend>Single?</legend><label><input type=radio name=q>A</label><label><input type=radio name=q>B</label></fieldset>'
+            '<fieldset data-question-type="fill_blank"><legend>填空题：___和___。</legend></fieldset>'))
+        capture, answer, vision = Mock(), Mock(), Mock()
+        capture.snapshot_target.return_value = self.target
+        router = InputRouter(capture, self.browser, answer, vision, Mock())
+        with patch('autoquestion.browser_session.WindowsWindowAPI') as windows, self.assertLogs('autoquestion') as logs:
+            windows.return_value.browser_windows.return_value = [123]
+            router.prepare()(threading.Event())
+        self.assertIn('Fallback: VISION', '\n'.join(logs.output))
+        answer.assert_not_called()
+        vision.for_target.assert_called_once_with(self.target)
+
+    def test_subjective_with_diagram_routes_whole_mixed_screen_to_vision(self):
+        self.browser._call(lambda: self.browser._adapter.page.set_content(
+            '<fieldset><legend>Single?</legend><label><input type=radio name=q>A</label><label><input type=radio name=q>B</label></fieldset>'
+            '<fieldset data-question-type="short_answer"><legend>解答题：根据图中的几何条件计算。</legend>'
+            '<p>写出证明过程。</p><svg width=180 height=100><path d="M10 80 L90 10 L170 80 Z"></path></svg></fieldset>'))
+        capture, answer, vision = Mock(), Mock(), Mock()
+        capture.snapshot_target.return_value = self.target
+        router = InputRouter(capture, self.browser, answer, vision, Mock())
+        with patch('autoquestion.browser_session.WindowsWindowAPI') as windows, self.assertLogs('autoquestion') as logs:
+            windows.return_value.browser_windows.return_value = [123]
+            router.prepare()(threading.Event())
+        self.assertIn('Fallback: VISION', '\n'.join(logs.output))
+        answer.assert_not_called()
+        vision.for_target.assert_called_once_with(self.target)
 
     def test_multiple_windows_or_tabs_reject_before_extraction(self):
         with patch('autoquestion.browser_session.WindowsWindowAPI') as windows, \

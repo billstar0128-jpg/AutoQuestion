@@ -8,7 +8,7 @@ from .browser_session import BrowserSession
 from .capture.browser import validated_dom_questions
 from .config import Config, load_llm_config
 from .llm.fake import FakeLLMProvider
-from .schemas import Question, QuestionType, format_answer, validate_answer_against_question
+from .schemas import Question, format_answer, validate_answer_against_question
 
 LOGGER = logging.getLogger("autoquestion")
 
@@ -45,9 +45,6 @@ def answer_dom_question(config: Config, question: Question | tuple[Question, ...
         if stop.is_set():
             return
         LOGGER.info("Question:\n%s", current.question_text)
-        if current.question_type not in (QuestionType.SINGLE_CHOICE, QuestionType.MULTIPLE_CHOICE, QuestionType.TRUE_FALSE):
-            LOGGER.info("已识别题型 %s，%d 个选项；当前尚不支持求解。", current.question_type.value, len(current.options))
-            return
         answer = validate_answer_against_question(current, provider.answer_question(current))
         results.append({'question': current.model_dump(mode='json'), 'answer': answer.model_dump(mode='json')})
     if stop.is_set():

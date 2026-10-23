@@ -31,7 +31,7 @@
 
 单选和多选至少两个选项，判断题恰好两个；index 是唯一非负整数，可以不连续，非空 label 不能重复。单选/判断答案必须有 selected_index 和 selected_text。confidence 为 0～1 的有限数字，short_reason 最长 200 字符。
 
-QuestionType 包含 single_choice、multiple_choice、true_false、fill_blank、short_answer；前三种支持求解，填空/简答仍仅预留。SourceType 保持 DOM、VISION、MANUAL。多选使用 selected_indices、selected_labels、selected_texts 三个等长数组；单选/判断保留原单值字段。M10 协议详见下文。
+QuestionType 包含 single_choice、multiple_choice、true_false、fill_blank、short_answer，0.4.0 五种均接入求解；解答、计算和论述归入 short_answer。SourceType 保持 DOM、VISION、MANUAL。多选使用 selected_indices、selected_labels、selected_texts 三个等长数组；单选/判断保留原单值字段。填空只用 blank_answers 且长度精确匹配 Question.blank_count（1～20），简答/解答只用 answer_text（1～12000字符），两类主观题 options=[]，主客观答案字段不能混用。short_reason 始终只是最多200字符的简要说明。
 
 `validate_answer_against_question` 以原 Question 为事实来源：题型、index、label、text 必须一致。index 按选项标识查找，而不是当作数组下标。对不存在的 index、错误 label/text 一律报 AnswerValidationError，**不自动纠正**，因为修正可能掩盖模型实际选错选项的问题。
 
@@ -102,7 +102,7 @@ VisionAnalysisResult 结构：
 }
 ```
 
-Vision 强制 source_type=VISION，index 按视觉顺序从 0 连续编号，复用严格 label/text/index 一致性校验。图中圆圈不视为字母标签。0.3.0 Prompt 按屏幕阅读顺序返回所有完整可见的单选、多选或判断题，最多 10 道，顶层 results 数组每项独立包含 question/answer；旧单题响应继续兼容。整批校验通过后原子发布，任一题答案矛盾会拒绝整批；没有完整可读题时返回固定错误。结构一致并不证明图片识别和知识答案正确，需人工核对。
+Vision 强制 source_type=VISION，index 按视觉顺序从 0 连续编号，复用严格 label/text/index 一致性校验。图中圆圈不视为字母标签。0.4.0 Prompt 按屏幕阅读顺序返回所有完整可见的五种题型，最多 10 道，顶层 results 数组每项独立包含 question/answer；旧单题响应继续兼容。整批校验通过后原子发布，任一题答案矛盾或填空数量不匹配会拒绝整批；没有完整可读题时返回固定错误。结构一致并不证明图片识别、知识答案或推导正确，需人工核对。
 
 `vision.py` 串联截图与 Provider；`supports_vision=false` 在截图与请求前报错。BUSY 时不会记录新的目标、截图或并发发请求。ESC 阻止新任务；已经进行的同步 API 请求需等待完成/超时，随后丢弃待显示答案并清理退出。
 
@@ -167,3 +167,5 @@ multiple_choice 使用非空、无重复的 selected_indices，以及等长且�
 Text 和 Vision 共用题型答案协议提示词，要求只返回 JSON、只能选择已有选项、保持 null 标签、多选返回全部认为正确的选项且不预设至少两项。Vision 一次图像请求同时提取 Question 并给出答案：checkbox/明确多选识别为 multiple_choice，明显判断题识别为 true_false，保留来源 VISION。
 
 DOM 的多选/判断现在直接送入现有 answer_question。AUTO 仍仅在 acquisition failure 时 fallback；任何题型的 Provider、JSON、答案结构或一致性错误都 ERROR→READY，不能再次请求 Vision。DOM 成功时不截图。结构校验不能证明模型知识判断正确，仍需人工核对。
+
+0.4.0 的主观题 DOM 提取仅接受题型与题组明确、填空数量可靠的页面，不读取作答框的内容。题组内可见题图、Canvas、SVG 等会使 DOM 获取失败，AUTO 转 Vision，以免漏掉必要材料。没有语义标记的 CSS 背景图仍可能无法判断是否属于题意；遇到这类页面请选 Vision 并核对材料完整性。

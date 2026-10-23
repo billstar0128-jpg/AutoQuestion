@@ -1,3 +1,3 @@
 """AutoQuestion：本地 DOM / Vision 练习题助手。导入不启动服务。"""
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"

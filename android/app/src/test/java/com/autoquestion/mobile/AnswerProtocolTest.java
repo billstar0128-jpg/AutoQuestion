@@ -38,6 +38,20 @@ public final class AnswerProtocolTest {
                 .put("selected_text", "正确").put("short_reason", "2 能被 2 整除。");
         return entry;
     }
+    private JSONObject fill() throws Exception {
+        return new JSONObject("""
+            {"question":{"question_text":"4. 1+1=____；2+2=____。","question_type":"fill_blank","source_type":"VISION",
+            "options":[],"blank_count":2},"answer":{"question_type":"fill_blank","blank_answers":["2","4"],
+            "confidence":0.95,"short_reason":"分别计算两个算式。"}}
+            """);
+    }
+    private JSONObject subjective() throws Exception {
+        return new JSONObject("""
+            {"question":{"question_text":"5. 解方程并写出步骤：2x+3=7。","question_type":"short_answer","source_type":"VISION",
+            "options":[],"blank_count":null},"answer":{"question_type":"short_answer", "answer_text":"第一步：两边减去 3，得到 2x=4。\\n\\n第二步：两边除以 2，得到 x=2。\\n检验：2×2+3=7，成立。",
+            "confidence":0.9,"short_reason":"通过等式两边同减、同除求解。"}}
+            """);
+    }
     private void rejected(String value) {
         assertThrows(org.json.JSONException.class, () -> AnswerProtocol.parse(value));
     }
@@ -49,6 +63,93 @@ public final class AnswerProtocolTest {
         assertEquals("A · 巴黎", results.get(0).answer);
         assertEquals("A · 2\nC · 4", results.get(1).answer);
         assertEquals("多选", results.get(1).typeLabel());
+    }
+
+    @Test public void allFiveTypesCanMixWithoutLosingParagraphsOrBlankOrder() throws Exception {
+        JSONObject sixth = subjective(); sixth.getJSONObject("question").put("question_text", "6. 说明你的理由。");
+        List<AnswerProtocol.Result> results = AnswerProtocol.parse(batch(single(), multiple(), trueFalse(3), fill(), subjective(), sixth));
+        assertEquals(6, results.size());
+        assertEquals("单选", results.get(0).typeLabel()); assertEquals("多选", results.get(1).typeLabel());
+        assertEquals("判断", results.get(2).typeLabel()); assertEquals("填空", results.get(3).typeLabel());
+        assertEquals("简答 / 解答", results.get(4).typeLabel());
+        assertEquals(java.util.Arrays.asList("2", "4"), results.get(3).blankAnswers);
+        assertEquals("第 1 空：2\n第 2 空：4", results.get(3).answer);
+        assertEquals(subjective().getJSONObject("answer").getString("answer_text"), results.get(4).answer);
+        assertTrue(results.get(4).answer.contains("\n\n"));
+        assertThrows(UnsupportedOperationException.class, () -> results.get(3).blankAnswers.add("changed"));
+    }
+
+    @Test public void acceptsSerializedDefaultEmptyFieldsForEveryType() throws Exception {
+        JSONObject[] entries = {single(), multiple(), trueFalse(3), fill(), subjective()};
+        for (JSONObject entry : entries) {
+            JSONObject q = entry.getJSONObject("question"), a = entry.getJSONObject("answer");
+            if (!q.has("blank_count")) q.put("blank_count", JSONObject.NULL);
+            for (String field : new String[]{"selected_index", "selected_label", "selected_text", "answer_text"})
+                if (!a.has(field)) a.put(field, JSONObject.NULL);
+            for (String field : new String[]{"selected_indices", "selected_labels", "selected_texts", "blank_answers"})
+                if (!a.has(field)) a.put(field, new JSONArray());
+        }
+        assertEquals(5, AnswerProtocol.parse(batch(entries)).size());
+    }
+
+    @Test public void fillBlankCountMustBeAnExplicitStrictIntegerBetweenOneAndTwenty() throws Exception {
+        JSONObject entry = fill(); entry.getJSONObject("question").remove("blank_count"); rejected(batch(entry));
+        for (Object count : new Object[]{JSONObject.NULL, 0, 21, "2", true}) {
+            entry = fill(); entry.getJSONObject("question").put("blank_count", count); rejected(batch(entry));
+        }
+        rejected(batch(fill()).replace("\"blank_count\":2", "\"blank_count\":2.0"));
+    }
+
+    @Test public void fillRejectsMissingExtraEmptyAndNonStringAnswersAtomically() throws Exception {
+        for (String values : new String[]{"[]", "[\"2\"]", "[\"2\",\"4\",\"6\"]", "[\"2\",\" \"]",
+                "[\"2\",null]", "[\"2\",4]"}) {
+            JSONObject entry = fill(); entry.getJSONObject("answer").put("blank_answers", new JSONArray(values));
+            rejected(batch(single(), multiple(), trueFalse(3), entry, subjective()));
+        }
+        JSONObject entry = fill(); entry.getJSONObject("answer").remove("blank_answers"); rejected(batch(entry));
+        entry = fill(); entry.getJSONObject("answer").put("blank_answers", new JSONArray().put("2").put("x".repeat(2001))); rejected(batch(entry));
+    }
+
+    @Test public void subjectiveMustNotBorrowOptionsOrSelectionFields() throws Exception {
+        for (JSONObject entry : new JSONObject[]{fill(), subjective()}) {
+            entry.getJSONObject("question").put("options", single().getJSONObject("question").getJSONArray("options")); rejected(batch(entry));
+        }
+        for (String field : new String[]{"selected_index", "selected_label", "selected_text"}) {
+            JSONObject entry = subjective(); entry.getJSONObject("answer").put(field, field.equals("selected_index") ? 0 : ""); rejected(batch(entry));
+        }
+        for (String field : new String[]{"selected_indices", "selected_labels", "selected_texts"}) {
+            JSONObject entry = fill(); entry.getJSONObject("answer").put(field, new JSONArray().put("x")); rejected(batch(entry));
+            entry = fill(); entry.getJSONObject("answer").put(field, JSONObject.NULL); rejected(batch(entry));
+        }
+    }
+
+    @Test public void onlyTheCorrectAnswerFieldsAreAllowedForEachType() throws Exception {
+        JSONObject entry = fill(); entry.getJSONObject("answer").put("answer_text", "2 and 4"); rejected(batch(entry));
+        entry = subjective(); entry.getJSONObject("answer").put("blank_answers", new JSONArray().put("2")); rejected(batch(entry));
+        entry = single(); entry.getJSONObject("answer").put("answer_text", "Paris"); rejected(batch(entry));
+        entry = multiple(); entry.getJSONObject("answer").put("blank_answers", new JSONArray().put("2")); rejected(batch(entry));
+        entry = single(); entry.getJSONObject("question").put("blank_count", 1); rejected(batch(entry));
+        entry = subjective(); entry.getJSONObject("question").put("blank_count", 1); rejected(batch(entry));
+    }
+
+    @Test public void shortReasonCannotSubstituteForACompleteSubjectiveAnswer() throws Exception {
+        JSONObject entry = subjective(); entry.getJSONObject("answer").remove("answer_text"); rejected(batch(entry));
+        for (Object value : new Object[]{JSONObject.NULL, "", " \n\t ", "\u00a0\u3000", 42, "x".repeat(12001)}) {
+            entry = subjective(); entry.getJSONObject("answer").put("answer_text", value); rejected(batch(entry));
+        }
+        entry = subjective(); entry.getJSONObject("answer").put("answer_text", "x".repeat(12000));
+        assertEquals(12000, AnswerProtocol.parse(batch(entry)).get(0).answer.length());
+        entry = subjective(); entry.getJSONObject("answer").put("answer_text", "😀".repeat(12000));
+        String unicode = AnswerProtocol.parse(batch(entry)).get(0).answer;
+        assertEquals(12000, unicode.codePointCount(0, unicode.length()));
+    }
+
+    @Test public void twentyVisibleBlanksAreSupportedButNotTwentyOne() throws Exception {
+        JSONObject entry = fill(); entry.getJSONObject("question").put("blank_count", 20);
+        JSONArray values = new JSONArray(); for (int i = 1; i <= 20; i++) values.put("答案" + i);
+        entry.getJSONObject("answer").put("blank_answers", values);
+        assertEquals(20, AnswerProtocol.parse(batch(entry)).get(0).blankAnswers.size());
+        entry.getJSONObject("question").put("blank_count", 21); values.put("答案21"); rejected(batch(entry));
     }
 
     @Test public void threeThroughSixMixedQuestionsKeepEveryIndependentAnswer() throws Exception {

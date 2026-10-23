@@ -121,7 +121,7 @@ class WebFrontendTests(unittest.TestCase):
 
     def test_static_preview_never_requests_local_api_or_accepts_key(self):
         output = build(Path(self.directory.name) / 'preview')
-        self.assertEqual({path.name for path in output.iterdir()}, {'index.html', 'download.css', 'preview', 'try-questions.html'})
+        self.assertEqual({path.name for path in output.iterdir()}, {'index.html', 'download.css', 'preview', 'try-questions.html', 'try-subjective.html'})
         self.assertNotIn('id="api-key"', (output / 'index.html').read_text(encoding='utf-8'))
         requests = []
         files = ThreadingHTTPServer(('127.0.0.1', 0), partial(SilentFiles, directory=str(output)))
@@ -194,13 +194,74 @@ class WebFrontendTests(unittest.TestCase):
 
     def test_mobile_six_question_page_fits_without_cutting_options(self):
         self.page.set_viewport_size({'width': 390, 'height': 844})
-        self.page.goto((ROOT / 'examples/browser_dom/mixed_questions.html').as_uri())
-        self.assertEqual(self.page.locator('fieldset').count(), 6)
-        self.assertTrue(self.page.evaluate('''() => [...document.querySelectorAll('legend,label')].every(el => {
-            const r = el.getBoundingClientRect();
-            return r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth;
-        })'''))
-        self.assertEqual(self.page.locator('input:checked').count(), 0)
+        for name in ('mixed_questions.html', 'mixed_subjective.html'):
+            with self.subTest(name=name):
+                self.page.goto((ROOT / 'examples/browser_dom' / name).as_uri())
+                self.assertEqual(self.page.locator('fieldset').count(), 6)
+                self.assertTrue(self.page.evaluate('''() => [...document.querySelectorAll('fieldset,legend,label,fieldset p,textarea,input,[contenteditable]')].every(el => {
+                    const r = el.getBoundingClientRect();
+                    return r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth;
+                })'''))
+                self.assertEqual(self.page.locator('input:checked').count(), 0)
+
+    def test_subjective_mixed_results_real_copy_paste_and_selection_survives_polling(self):
+        from test_subjective_answering import subjective_mixed_payload, SOLUTION
+        from autoquestion.schemas import VisionBatchResult
+        self.page.context.grant_permissions(['clipboard-read', 'clipboard-write'], origin=self.server.origin)
+        self.open_local()
+        self.page.locator('.nav-link[data-view=workspace]').click()
+        payload = subjective_mixed_payload()
+        long_solution = SOLUTION + '\n' + '详细步骤保留换行与数学符号 ≤ ≥。\n' * 100 + '<b>仅为文字</b>'
+        payload['results'][4]['answer']['answer_text'] = long_solution
+        record = logging.LogRecord('autoquestion', logging.INFO, '', 0, 'Mixed subjective results', (), None)
+        record.question_results = VisionBatchResult.model_validate(payload).model_dump(mode='json')['results']
+        self.controller.record(record)
+        self.page.wait_for_function("() => document.querySelectorAll('.batch-result-card').length === 6")
+        self.page.locator('.batch-result-card').nth(4).click()
+        self.assertEqual(self.page.locator('#answer-text').inner_text(), long_solution)
+        self.assertEqual(self.page.locator('#answer-result b, #answer-result img, #answer-result script').count(), 0)
+        self.page.locator('#copy-answer').click()
+        self.page.wait_for_function("() => document.querySelector('#toast').textContent.includes('答案已复制')")
+        # Windows clipboard uses CRLF; paste targets normalize this platform newline.
+        self.assertEqual(self.page.evaluate('navigator.clipboard.readText()').replace('\r\n', '\n'), long_solution)
+        self.page.evaluate("() => { const el=document.createElement('textarea'); el.id='paste-target'; document.body.append(el); }")
+        self.page.locator('#paste-target').focus()
+        self.page.locator('#paste-target').press('Control+V')
+        self.assertEqual(self.page.locator('#paste-target').input_value(), long_solution)
+        self.page.evaluate('''() => {
+            window.answerPolls = 0;
+            const original = window.fetch;
+            window.fetch = (...args) => { if (String(args[0]).includes('/api/state')) window.answerPolls++; return original(...args); };
+            const range=document.createRange(); range.selectNodeContents(document.querySelector('#answer-text'));
+            const selection=window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+        }''')
+        self.page.wait_for_function('() => window.answerPolls >= 2')
+        self.assertEqual(self.page.evaluate('window.getSelection().toString()'), long_solution)
+        self.page.locator('.batch-result-card').nth(3).click()
+        self.assertEqual(self.page.locator('.blank-answer-text').all_text_contents(), ['北京', '2'])
+        self.page.locator('#blank-answers button').nth(1).click()
+        self.page.wait_for_function("() => navigator.clipboard.readText().then(text => text === '2')")
+        self.page.locator('#copy-answer').click()
+        self.page.wait_for_function("() => navigator.clipboard.readText().then(text => text.replaceAll('\\r\\n', '\\n') === '第 1 空：北京\\n第 2 空：2')")
+        self.assertEqual(self.errors, [])
+
+    def test_copy_failure_keeps_answer_selectable_and_reports_failure(self):
+        from test_subjective_answering import subjective_payload
+        self.open_local()
+        self.page.locator('.nav-link[data-view=workspace]').click()
+        data = subjective_payload()
+        with self.controller.lock:
+            self.controller.history = [dict(question=data['question'], answer=data['answer'], time='test')]
+        self.page.locator('#answer-result').wait_for(state='visible')
+        self.page.evaluate('''() => {
+            Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{throw new Error('denied');}}});
+            document.execCommand=()=>false;
+        }''')
+        self.page.locator('#copy-answer').click()
+        self.page.wait_for_function("() => document.querySelector('#toast').textContent.includes('复制未完成')")
+        self.assertEqual(self.page.locator('#answer-text').inner_text(), data['answer']['answer_text'])
+        self.assertEqual(self.page.locator('.clipboard-fallback').count(), 0)
+        self.assertEqual(self.errors, [])
 
 
 if __name__ == '__main__':

@@ -1,12 +1,16 @@
 package com.autoquestion.mobile;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.content.ClipData;
+import android.content.ClipDescription;
+import android.content.ClipboardManager;
 import android.content.pm.ServiceInfo;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
@@ -26,6 +30,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PersistableBundle;
 import android.provider.Settings;
 import android.view.Choreographer;
 import android.view.Gravity;
@@ -67,6 +72,7 @@ public final class CaptureService extends Service {
     private volatile ImageReader reader;
     private BubbleView bubble;
     private LinearLayout panel;
+    private Dialog panelDialog;
     private WindowManager.LayoutParams bubbleParams;
     private volatile boolean closing;
     private volatile VisionClient client;
@@ -407,27 +413,115 @@ public final class CaptureService extends Service {
             TextView number = label("第 " + (i + 1) + " 题 · " + result.typeLabel(), 12, true);
             number.setTextColor(Color.rgb(120, 96, 216)); number.setPadding(0, i == 0 ? 0 : dp(20), 0, dp(5)); body.addView(number);
             body.addView(label(result.question, 14, false));
-            TextView answer = label("答案  " + result.answer, 17, true); answer.setPadding(0, dp(9), 0, dp(7)); body.addView(answer);
+            if (result.blankAnswers.isEmpty()) {
+                body.addView(label("答案", 12, true));
+                body.addView(selectableAnswer(result.answer, "第 " + (i + 1) + " 题答案"));
+            } else for (int blank = 0; blank < result.blankAnswers.size(); blank++) {
+                body.addView(label("第 " + (blank + 1) + " 空", 12, true));
+                String value = result.blankAnswers.get(blank);
+                body.addView(selectableAnswer(value, "第 " + (i + 1) + " 题第 " + (blank + 1) + " 空答案"));
+                Button copyBlank = panelButton("复制第 " + (blank + 1) + " 空", () -> copyAnswer(value));
+                copyBlank.setContentDescription("复制第 " + (i + 1) + " 题第 " + (blank + 1) + " 空");
+                body.addView(copyBlank, new LinearLayout.LayoutParams(-1, dp(44)));
+            }
+            Button copy = panelButton("复制本题答案", () -> copyAnswer(result.answer));
+            copy.setContentDescription("复制第 " + (i + 1) + " 题完整答案");
+            body.addView(copy, new LinearLayout.LayoutParams(-1, dp(44)));
             body.addView(label(result.reason + "  ·  " + Math.round(result.confidence * 100) + "%", 12, false));
         }
-        TextView hint = label("答案仅供参考；不会点击或提交。", 11, false); hint.setPadding(0, dp(10), 0, dp(2)); panel.addView(hint);
+        TextView hint = label("长按答案可选择文字；复制后请自行切换应用粘贴。不会自动填写或提交。", 11, false); hint.setPadding(0, dp(10), 0, dp(2)); panel.addView(hint);
         LinearLayout actions = new LinearLayout(this); actions.setOrientation(LinearLayout.HORIZONTAL);
         actions.addView(panelButton("收起", this::hidePanel), new LinearLayout.LayoutParams(0, dp(44), 1));
         actions.addView(panelButton("停止", this::stopSelf), new LinearLayout.LayoutParams(0, dp(44), 1));
         panel.addView(actions);
         int width = Math.min(dp(330), screenBounds().width() - dp(24));
         WindowManager.LayoutParams params = overlayParams(width, -2);
+        // A Dialog's DecorView hosts native selection ActionMode and handles.
+        // A raw WindowManager root cannot host ActionMode, even when focusable.
+        params.flags &= ~WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+        params.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL | WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM
+                | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
         params.x = Math.max(dp(8), Math.min(bubbleParams.x, screenBounds().width() - width - dp(8)));
         params.y = Math.max(dp(20), Math.min(bubbleParams.y + dp(50), screenBounds().height() - dp(500)));
-        try { windowManager.addView(panel, params); }
-        catch (RuntimeException e) { panel = null; stopSelf(); }
+        try {
+            Dialog dialog = new Dialog(this, android.R.style.Theme_Material_Light_Dialog_NoActionBar);
+            dialog.setContentView(panel);
+            dialog.setCanceledOnTouchOutside(true);
+            android.view.Window window = dialog.getWindow();
+            if (window == null) throw new IllegalStateException("无答案窗口");
+            window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+            window.setAttributes(params);
+            dialog.setOnDismissListener(ignored -> {
+                if (panelDialog == dialog) {
+                    panelDialog = null;
+                    if (panel != null) panel.removeAllViews();
+                    panel = null;
+                }
+            });
+            panelDialog = dialog;
+            dialog.show();
+            window.getDecorView().setPadding(0, 0, 0, 0);
+            window.setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT);
+        } catch (RuntimeException e) { hidePanel(); stopSelf(); }
+    }
+
+    private TextView selectableAnswer(String value, String description) {
+        TextView view = new AnswerTextView(this);
+        view.setText(value); view.setTextSize(17); view.setTextColor(Color.rgb(42, 38, 58));
+        view.setLineSpacing(dp(3), 1); view.setPadding(0, dp(9), 0, dp(7));
+        view.setContentDescription(description); return view;
+    }
+
+    /** Only explicit button/context-menu actions call this; the app never reads the clipboard. */
+    private void copyAnswer(String value) {
+        if (closing) return;
+        try {
+            ClipData clip = ClipData.newPlainText("AutoQuestion 答案", value);
+            if (Build.VERSION.SDK_INT >= 33) {
+                PersistableBundle extras = new PersistableBundle();
+                extras.putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true);
+                clip.getDescription().setExtras(extras);
+            }
+            getSystemService(ClipboardManager.class).setPrimaryClip(clip);
+            if (Build.VERSION.SDK_INT < 33) Toast.makeText(this, "已复制，可自行切换应用粘贴。", Toast.LENGTH_SHORT).show();
+        } catch (RuntimeException error) {
+            Toast.makeText(this, "未能复制，请长按选择答案后重试。", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private final class AnswerTextView extends TextView {
+        AnswerTextView(android.content.Context context) {
+            super(context);
+            setTextIsSelectable(true);
+            setCustomSelectionActionModeCallback(new android.view.ActionMode.Callback() {
+                @Override public boolean onCreateActionMode(android.view.ActionMode mode, android.view.Menu menu) { return true; }
+                @Override public boolean onPrepareActionMode(android.view.ActionMode mode, android.view.Menu menu) {
+                    for (int i = menu.size() - 1; i >= 0; i--) {
+                        int id = menu.getItem(i).getItemId();
+                        if (id != android.R.id.copy && id != android.R.id.selectAll) menu.removeItem(id);
+                    }
+                    return true;
+                }
+                @Override public boolean onActionItemClicked(android.view.ActionMode mode, android.view.MenuItem item) { return false; }
+                @Override public void onDestroyActionMode(android.view.ActionMode mode) { }
+            });
+        }
+        @Override public boolean onTextContextMenuItem(int id) {
+            if (id == android.R.id.copy) {
+                int from = Math.min(getSelectionStart(), getSelectionEnd());
+                int to = Math.max(getSelectionStart(), getSelectionEnd());
+                if (from >= 0 && to > from && to <= length()) copyAnswer(getText().subSequence(from, to).toString());
+                return true;
+            }
+            return super.onTextContextMenuItem(id);
+        }
     }
 
     private void hidePanel() {
-        if (panel != null) {
-            try { windowManager.removeViewImmediate(panel); } catch (RuntimeException ignored) { }
-            panel.removeAllViews(); panel = null;
-        }
+        Dialog previous = panelDialog; panelDialog = null;
+        LinearLayout previousPanel = panel; panel = null;
+        if (previous != null) { try { previous.dismiss(); } catch (RuntimeException ignored) { } }
+        if (previousPanel != null) previousPanel.removeAllViews();
     }
 
     private TextView label(String value, int size, boolean bold) {

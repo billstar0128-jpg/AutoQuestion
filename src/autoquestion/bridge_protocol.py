@@ -60,11 +60,22 @@ def decode_message(raw):
                 if not isinstance(questions, list) or not 1 <= len(questions) <= 10:
                     raise ProtocolError()
                 for q in questions:
-                    if (not isinstance(q, dict) or set(q) != {'kind', 'stem', 'options'}
-                        or q['kind'] not in ('radio', 'checkbox')
+                    if (not isinstance(q, dict) or not {'kind', 'stem', 'options'} <= set(q)
+                        or set(q) - {'kind', 'stem', 'options', 'blank_count'}
+                        or q['kind'] not in ('radio', 'checkbox', 'fill_blank', 'short_answer')
                         or not isinstance(q['stem'], str) or not 1 <= len(q['stem']) <= 8000
-                        or not isinstance(q['options'], list) or not 2 <= len(q['options']) <= 50
+                        or not isinstance(q['options'], list)
                         or any(not isinstance(o, str) or not 1 <= len(o) <= 2000 for o in q['options'])):
+                        raise ProtocolError()
+                    if q['kind'] in ('radio', 'checkbox'):
+                        if not 2 <= len(q['options']) <= 50 or q.get('blank_count') is not None:
+                            raise ProtocolError()
+                    elif q['options']:
+                        raise ProtocolError()
+                    if q['kind'] == 'fill_blank':
+                        if type(q.get('blank_count')) is not int or not 1 <= q['blank_count'] <= 20:
+                            raise ProtocolError()
+                    elif q.get('blank_count') is not None:
                         raise ProtocolError()
         elif kind != 'pong':
             raise ProtocolError()

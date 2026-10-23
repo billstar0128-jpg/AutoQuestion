@@ -4,15 +4,17 @@ import android.app.Instrumentation;
 import android.app.UiAutomation;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ClipData;
+import android.content.ClipDescription;
+import android.content.ClipboardManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Color;
 import android.os.ParcelFileDescriptor;
 import android.os.SystemClock;
 import android.test.InstrumentationTestCase;
 import android.view.View;
-import android.view.WindowManager;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.widget.EditText;
 import android.widget.TextView;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -35,6 +37,11 @@ import javax.net.ssl.HttpsURLConnection;
 /** Runs only on an explicitly selected, disposable emulator. All HTTPS is replaced in memory. */
 @SuppressWarnings("deprecation")
 public final class MobileSmokeTest extends InstrumentationTestCase {
+    private static final String MATH_ANSWER = "解：\n令 x + y = 5，x − y = 1。\n"
+            + "两式相加：2x = 6，故 x = 3。\n代回得 y = 2。\n\n"
+            + "验证：3 + 2 = 5，3 − 2 = 1。\n所以 (x, y) = (3, 2)。";
+    private static final String ESSAY_ANSWER = "第一段：植物通过光合作用把光能转化为化学能。\n\n"
+            + "第二段：叶绿体中的色素吸收光，生成的能量用于固定二氧化碳。";
     private static final AtomicInteger requests = new AtomicInteger();
     private static final AtomicInteger cancelledRequests = new AtomicInteger();
     private static volatile CountDownLatch requestEntered = new CountDownLatch(1);
@@ -43,11 +50,16 @@ public final class MobileSmokeTest extends InstrumentationTestCase {
     private MainActivity activity;
     private Context context;
     private UiAutomation automation;
+    private EditText pasteTarget;
+    private ScreenFixtureActivity fixture;
 
     public void testRealProjectionOverlaySixQuestionsAndStop() throws Exception {
         Instrumentation instrumentation = getInstrumentation();
+        assertTrue("Clipboard smoke must run only on a disposable Android emulator",
+                "ranchu".equals(android.os.Build.HARDWARE) || "goldfish".equals(android.os.Build.HARDWARE));
         context = instrumentation.getTargetContext();
         automation = instrumentation.getUiAutomation();
+        freezeRotation(UiAutomation.ROTATION_FREEZE_0, android.content.res.Configuration.ORIENTATION_PORTRAIT);
         android.accessibilityservice.AccessibilityServiceInfo info = automation.getServiceInfo();
         info.flags |= android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
                 | android.accessibilityservice.AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS;
@@ -64,7 +76,7 @@ public final class MobileSmokeTest extends InstrumentationTestCase {
         SecureStore store = new SecureStore(context);
         store.save(new ApiConfig("https://synthetic.autoquestion.invalid/v1", "synthetic-vision"), "synthetic-test-key-no-account");
         activity = (MainActivity) instrumentation.startActivitySync(new Intent(context, MainActivity.class)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK));
         try {
             startAndConsent();
             showSyntheticQuestions();
@@ -72,7 +84,7 @@ public final class MobileSmokeTest extends InstrumentationTestCase {
             assertTrue("A real projected frame must reach the in-memory fake API", requestEntered.await(15, TimeUnit.SECONDS));
             assertEquals(1, requests.get());
             int[] portrait = verifyCapturedRequest();
-            assertTrue("Initial capture must be portrait", portrait[1] > portrait[0]);
+            assertTrue("Initial capture must be portrait: " + portrait[0] + "x" + portrait[1], portrait[1] > portrait[0]);
             // Repeated taps while busy must neither capture again nor queue another request.
             awaitText("···", 5000);
             for (int i = 0; i < 5; i++) clickText("···", false);
@@ -81,24 +93,30 @@ public final class MobileSmokeTest extends InstrumentationTestCase {
             answerAllowed.countDown();
             awaitText("第 1 题 · 单选", 15000);
             assertTrue("First answer must be shown", containsText("A · Alpha"));
+            assertCopiedAndPasted("复制第 1 题完整答案", "A · Alpha");
+            assertCopiedAndPasted("复制第 4 题第 1 空", "2");
+            assertCopiedAndPasted("复制第 4 题完整答案", "第 1 空：2\n第 2 空：速度 v = s / t");
+            assertSelectedTextCopied("第 5 题答案", MATH_ANSWER.substring(0, 12));
+            assertCopiedAndPasted("复制第 5 题完整答案", MATH_ANSWER);
+            assertCopiedAndPasted("复制第 6 题完整答案", ESSAY_ANSWER);
             boolean sixth = false;
             for (int i = 0; i < 8; i++) {
-                if (containsText("第 6 题 · 判断")) { sixth = true; break; }
+                if (containsText("第 6 题 · 简答")) { sixth = true; break; }
                 scrollAnswerPanel();
             }
-            assertTrue("All six separate mixed-type answers must be present", sixth);
+            assertTrue("All six objective and subjective answers must be present", sixth);
             SystemClock.sleep(300);
             assertEquals("Completing one screen must not run queued duplicate work", 1, requests.get());
             assertTrue(clickText("收起", false));
-            Instrumentation.ActivityMonitor monitor = instrumentation.addMonitor(MainActivity.class.getName(), null, false);
-            automation.setRotation(UiAutomation.ROTATION_FREEZE_90);
-            MainActivity rotated = (MainActivity) monitor.waitForActivityWithTimeout(5000);
+            Instrumentation.ActivityMonitor monitor = instrumentation.addMonitor(ScreenFixtureActivity.class.getName(), null, false);
+            freezeRotation(UiAutomation.ROTATION_FREEZE_90, android.content.res.Configuration.ORIENTATION_LANDSCAPE);
+            ScreenFixtureActivity rotated = (ScreenFixtureActivity) monitor.waitForActivityWithTimeout(5000);
             instrumentation.removeMonitor(monitor);
-            if (rotated != null) activity = rotated;
+            if (rotated != null) fixture = rotated;
             assertTrue("Rotating must keep the same approved projection session", CaptureService.isRunning());
             requestEntered = new CountDownLatch(1); answerAllowed = new CountDownLatch(1);
             showSyntheticQuestions();
-            assertTrue(clickText("AQ", false));
+            awaitClick("AQ", false, 5000);
             assertTrue("A landscape frame must be captured", requestEntered.await(15, TimeUnit.SECONDS));
             int[] landscape = verifyCapturedRequest();
             assertTrue("Projection must resize to landscape", landscape[0] > landscape[1]);
@@ -114,7 +132,7 @@ public final class MobileSmokeTest extends InstrumentationTestCase {
             answerAllowed = new CountDownLatch(1);
             instrumentation.runOnMainSync(() -> activity.finish());
             activity = (MainActivity) instrumentation.startActivitySync(new Intent(context, MainActivity.class)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK));
             startAndConsent();
             // Cancellation needs only an owned, public emulator screen; the six-question fixture
             // has already been checked in both orientations in the preceding session.
@@ -139,8 +157,14 @@ public final class MobileSmokeTest extends InstrumentationTestCase {
             answerAllowed.countDown();
             context.stopService(new Intent(context, CaptureService.class));
             if (activity != null) instrumentation.runOnMainSync(() -> activity.finish());
+            instrumentation.runOnMainSync(ScreenFixtureActivity::finishOwnedActivities);
             automation.setRotation(UiAutomation.ROTATION_UNFREEZE);
             store.forget();
+            instrumentation.runOnMainSync(() -> {
+                ClipboardManager clipboard = context.getSystemService(ClipboardManager.class);
+                if (android.os.Build.VERSION.SDK_INT >= 28) clipboard.clearPrimaryClip();
+                else clipboard.setPrimaryClip(ClipData.newPlainText("", ""));
+            });
             if (capturedRequest != null) java.util.Arrays.fill(capturedRequest, (byte) 0);
         }
     }
@@ -162,26 +186,25 @@ public final class MobileSmokeTest extends InstrumentationTestCase {
         awaitText("AQ", 5000);
     }
 
+    private void freezeRotation(int rotation, int orientation) {
+        assertTrue("The emulator must accept the requested rotation", automation.setRotation(rotation));
+        long deadline = SystemClock.uptimeMillis() + 5000;
+        boolean[] settled = {false};
+        while (!settled[0] && SystemClock.uptimeMillis() < deadline) {
+            getInstrumentation().runOnMainSync(() -> settled[0] = context.getResources().getConfiguration().orientation == orientation
+                    && context.getSystemService(android.hardware.display.DisplayManager.class)
+                    .getDisplay(android.view.Display.DEFAULT_DISPLAY).getRotation() == rotation);
+            if (!settled[0]) SystemClock.sleep(50);
+        }
+        assertTrue("Display and app configuration must report the requested orientation", settled[0]);
+    }
+
     private void showSyntheticQuestions() throws Exception {
-        Instrumentation.ActivityMonitor monitor = getInstrumentation().addMonitor(MainActivity.class.getName(), null, false);
-        shell("am start -n com.autoquestion.mobile/.MainActivity -f 0x20000");
-        MainActivity resumed = (MainActivity) monitor.waitForActivityWithTimeout(1000);
-        getInstrumentation().removeMonitor(monitor);
-        if (resumed != null) activity = resumed;
-        getInstrumentation().runOnMainSync(() -> {
-            // The real setup screen is secure. Only this disposable test replaces it with public fixtures.
-            activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
-            TextView fixture = new TextView(activity);
-            fixture.setTextColor(Color.BLACK); fixture.setBackgroundColor(Color.CYAN); fixture.setTextSize(15);
-            fixture.setPadding(8, 40, 8, 8);
-            fixture.setText("Synthetic questions — no private screen\n\n1. Single: Alpha?\nA Alpha   B Beta\n\n"
-                    + "2. Multiple: Alpha and Gamma?\nA Alpha   B Beta   C Gamma\n\n"
-                    + "3. True/False: one equals one?\nTrue   False\n\n"
-                    + "4. Single: Alpha?\nA Alpha   B Beta\n\n"
-                    + "5. Multiple: Alpha and Gamma?\nA Alpha   B Beta   C Gamma\n\n"
-                    + "6. True/False: one equals one?\nTrue   False");
-            activity.setContentView(fixture);
-        });
+        fixture = (ScreenFixtureActivity) getInstrumentation().startActivitySync(
+                new Intent(context, ScreenFixtureActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        assertTrue("The owned practice screen must commit its drawn frame",
+                fixture.frameCommitted.await(5, TimeUnit.SECONDS));
+        pasteTarget = fixture.pasteTarget;
         getInstrumentation().waitForIdleSync();
         awaitText("Synthetic questions", 5000);
     }
@@ -200,7 +223,8 @@ public final class MobileSmokeTest extends InstrumentationTestCase {
         int cyan = 0, samples = 0;
         for (int y = 0; y < height; y += 8) for (int x = 0; x < width; x += 8) {
             int color = bitmap.getPixel(x, y);
-            if (Color.red(color) < 20 && Color.green(color) > 220 && Color.blue(color) > 220) cyan++;
+            if (android.graphics.Color.red(color) < 20 && android.graphics.Color.green(color) > 220
+                    && android.graphics.Color.blue(color) > 220) cyan++;
             samples++;
         }
         assertTrue("The capture must show the synthetic cyan fixture, not another window; cyan=" + cyan + "/" + samples
@@ -235,10 +259,112 @@ public final class MobileSmokeTest extends InstrumentationTestCase {
 
     private boolean clickText(String text, boolean longClick) {
         AccessibilityNodeInfo match = node(text);
-        return match != null && match.performAction(longClick ? AccessibilityNodeInfo.ACTION_LONG_CLICK : AccessibilityNodeInfo.ACTION_CLICK);
+        while (match != null) {
+            if (longClick ? match.isLongClickable() : match.isClickable()) {
+                return match.performAction(longClick ? AccessibilityNodeInfo.ACTION_LONG_CLICK : AccessibilityNodeInfo.ACTION_CLICK);
+            }
+            match = match.getParent();
+        }
+        return false;
+    }
+
+    private void awaitClick(String text, boolean longClick, long timeout) {
+        long deadline = SystemClock.uptimeMillis() + timeout;
+        while (SystemClock.uptimeMillis() < deadline) {
+            if (clickText(text, longClick)) return;
+            SystemClock.sleep(50);
+        }
+        fail("Expected actionable UI text: " + text + "; visible: " + visibleText());
     }
 
     private boolean containsText(String text) { return node(text) != null; }
+
+    private void assertCopiedAndPasted(String description, String expected) {
+        AccessibilityNodeInfo copy = null;
+        for (int i = 0; i < 35; i++) {
+            copy = describedNode(description);
+            if (copy != null) break;
+            scrollAnswerPanel();
+        }
+        assertNotNull("Expected user copy action: " + description + "; visible: " + visibleText(), copy);
+        assertTrue("User click must copy: " + description, copy.performAction(AccessibilityNodeInfo.ACTION_CLICK));
+        assertClipboardPastes(expected);
+    }
+
+    private void assertSelectedTextCopied(String description, String expected) {
+        AccessibilityNodeInfo answer = null;
+        for (int i = 0; i < 35; i++) {
+            answer = describedNode(description);
+            if (answer != null) break;
+            scrollAnswerPanel();
+        }
+        assertNotNull("The subjective answer must support selection", answer);
+        android.graphics.Rect visible = new android.graphics.Rect(); answer.getBoundsInScreen(visible);
+        AccessibilityNodeInfo parent = answer.getParent();
+        while (parent != null) {
+            if (parent.isScrollable()) {
+                android.graphics.Rect viewport = new android.graphics.Rect(); parent.getBoundsInScreen(viewport);
+                assertTrue("The selected answer must intersect its visible scroll viewport", visible.intersect(viewport));
+            }
+            parent = parent.getParent();
+        }
+        long downTime = SystemClock.uptimeMillis();
+        float x = visible.left + Math.min(15, visible.width() / 2f);
+        float y = visible.top + Math.min(18, visible.height() / 2f);
+        android.view.MotionEvent down = android.view.MotionEvent.obtain(downTime, downTime,
+                android.view.MotionEvent.ACTION_DOWN, x, y, 0);
+        down.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);
+        assertTrue("Inject the user's real touch down", automation.injectInputEvent(down, true)); down.recycle();
+        SystemClock.sleep(android.view.ViewConfiguration.getLongPressTimeout() + 150L);
+        android.view.MotionEvent up = android.view.MotionEvent.obtain(downTime, SystemClock.uptimeMillis(),
+                android.view.MotionEvent.ACTION_UP, x, y, 0);
+        up.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);
+        assertTrue("Inject the user's real touch up", automation.injectInputEvent(up, true)); up.recycle();
+        awaitText("Copy", 5000);
+        answer.refresh();
+        android.os.Bundle selection = new android.os.Bundle();
+        selection.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, 0);
+        selection.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, expected.length());
+        assertTrue("The user must be able to select an answer substring",
+                answer.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, selection));
+        assertTrue("The user's contextual Copy action must work for selected text", clickText("Copy", false));
+        assertClipboardPastes(expected);
+        answer.performAction(AccessibilityNodeInfo.ACTION_CLEAR_FOCUS);
+    }
+
+    private void assertClipboardPastes(String expected) {
+        getInstrumentation().runOnMainSync(() -> {
+            // This test owns the emulator and only reads its own just-copied synthetic answer.
+            ClipboardManager clipboard = context.getSystemService(ClipboardManager.class);
+            ClipData clip = clipboard.getPrimaryClip();
+            assertNotNull("User copy must populate the real Android clipboard", clip);
+            assertEquals(1, clip.getItemCount());
+            assertEquals("Plain text must preserve every line and paragraph", expected, clip.getItemAt(0).getText().toString());
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                assertNotNull(clip.getDescription().getExtras());
+                assertTrue("Copied answer must hide the system preview", clip.getDescription().getExtras()
+                        .getBoolean(ClipDescription.EXTRA_IS_SENSITIVE));
+            }
+            pasteTarget.setText(""); pasteTarget.requestFocus();
+            assertTrue("The owned editor must support the user's paste action",
+                    pasteTarget.onTextContextMenuItem(android.R.id.paste));
+            assertEquals("Pasting must preserve complete multiline content", expected, pasteTarget.getText().toString());
+            context.getSystemService(android.view.inputmethod.InputMethodManager.class)
+                    .hideSoftInputFromWindow(pasteTarget.getWindowToken(), 0);
+            pasteTarget.clearFocus();
+        });
+    }
+
+    private AccessibilityNodeInfo describedNode(String description) {
+        ArrayDeque<AccessibilityNodeInfo> queue = new ArrayDeque<>(roots());
+        while (!queue.isEmpty()) {
+            AccessibilityNodeInfo item = queue.remove();
+            if (item.getContentDescription() != null && description.contentEquals(item.getContentDescription())
+                    && item.isVisibleToUser()) return item;
+            for (int i = 0; i < item.getChildCount(); i++) if (item.getChild(i) != null) queue.add(item.getChild(i));
+        }
+        return null;
+    }
 
     private void awaitText(String text, long timeout) {
         long deadline = SystemClock.uptimeMillis() + timeout;
@@ -318,19 +444,28 @@ public final class MobileSmokeTest extends InstrumentationTestCase {
     private static String response() throws Exception {
         JSONArray results = new JSONArray();
         for (int i = 0; i < 6; i++) {
-            String type = i % 3 == 0 ? "single_choice" : i % 3 == 1 ? "multiple_choice" : "true_false";
+            String type = i == 0 ? "single_choice" : i == 1 ? "multiple_choice" : i == 2 ? "true_false"
+                    : i == 3 ? "fill_blank" : "short_answer";
             JSONArray options = new JSONArray();
             boolean tf = type.equals("true_false");
-            options.put(new JSONObject().put("index", 0).put("label", tf ? JSONObject.NULL : "A").put("text", tf ? "True" : "Alpha"));
-            options.put(new JSONObject().put("index", 1).put("label", tf ? JSONObject.NULL : "B").put("text", tf ? "False" : "Beta"));
+            if (i < 3) {
+                options.put(new JSONObject().put("index", 0).put("label", tf ? JSONObject.NULL : "A").put("text", tf ? "True" : "Alpha"));
+                options.put(new JSONObject().put("index", 1).put("label", tf ? JSONObject.NULL : "B").put("text", tf ? "False" : "Beta"));
+            }
             JSONObject answer = new JSONObject().put("question_type", type).put("confidence", .9).put("short_reason", "Synthetic fixture");
             if (type.equals("multiple_choice")) {
                 options.put(new JSONObject().put("index", 2).put("label", "C").put("text", "Gamma"));
                 answer.put("selected_indices", new JSONArray().put(0).put(2)).put("selected_labels", new JSONArray().put("A").put("C"))
                         .put("selected_texts", new JSONArray().put("Alpha").put("Gamma"));
+            } else if (type.equals("fill_blank")) {
+                answer.put("blank_answers", new JSONArray().put("2").put("速度 v = s / t"));
+            } else if (type.equals("short_answer")) {
+                answer.put("answer_text", i == 4 ? MATH_ANSWER : ESSAY_ANSWER);
             } else answer.put("selected_index", 0).put("selected_label", tf ? JSONObject.NULL : "A").put("selected_text", tf ? "True" : "Alpha");
-            results.put(new JSONObject().put("question", new JSONObject().put("question_text", "Synthetic question " + (i + 1))
-                    .put("question_type", type).put("source_type", "VISION").put("options", options)).put("answer", answer));
+            JSONObject question = new JSONObject().put("question_text", "Synthetic question " + (i + 1))
+                    .put("question_type", type).put("source_type", "VISION").put("options", options);
+            if (type.equals("fill_blank")) question.put("blank_count", 2);
+            results.put(new JSONObject().put("question", question).put("answer", answer));
         }
         return new JSONObject().put("choices", new JSONArray().put(new JSONObject().put("finish_reason", "stop")
                 .put("message", new JSONObject().put("content", new JSONObject().put("results", results).toString())))).toString();

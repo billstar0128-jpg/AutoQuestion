@@ -46,7 +46,7 @@ def _parse_object(content: str, *, max_length: int = 32_000) -> dict[str, object
 
 
 def parse_answer_response(content: str, question: Question) -> AnswerResult:
-    payload = _parse_object(content)
+    payload = _parse_object(content, max_length=160_000)
     try:
         answer = AnswerResult.model_validate(payload)
     except ValidationError:
@@ -55,9 +55,9 @@ def parse_answer_response(content: str, question: Question) -> AnswerResult:
 
 
 def parse_vision_response(content: str) -> VisionAnalysisResult | VisionBatchResult:
-    payload = _parse_object(content, max_length=160_000)
+    payload = _parse_object(content, max_length=640_000)
     if payload == {"error": "unable_to_identify_question"}:
-        raise LLMResponseParseError("无法可靠识别完整的单选、多选或判断题，请调整题目窗口后重试。")
+        raise LLMResponseParseError("无法可靠识别完整题目，请显示题干、材料、题图及所需选项后重试。")
     try:
         if 'results' in payload:
             return VisionBatchResult.model_validate(payload)

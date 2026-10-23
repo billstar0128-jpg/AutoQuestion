@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import time
 
 from openai import APIConnectionError, APIError, APIStatusError, APITimeoutError, OpenAI
+from pydantic import ValidationError
 
 from ..config import LLMConfig
 from ..schemas import AnswerResult, Question, QuestionType, VisionAnalysisResult, VisionBatchResult
@@ -34,8 +35,10 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         self.supports_vision = config.supports_vision
 
     def answer_question(self, question: Question) -> AnswerResult:
-        if question.question_type not in (QuestionType.SINGLE_CHOICE, QuestionType.MULTIPLE_CHOICE, QuestionType.TRUE_FALSE):
-            raise LLMProviderError("本轮 Provider 仅支持 single_choice、multiple_choice 和 true_false。")
+        try:
+            question = Question.model_validate(question.model_dump(mode='python', warnings=False))
+        except (ValidationError, AttributeError, TypeError):
+            raise LLMProviderError("题目结构无效，未发送请求。") from None
         content = self._request([
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": question.model_dump_json()},
@@ -52,7 +55,7 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         content = self._request([
             {"role": "system", "content": VISION_PROMPT},
             {"role": "user", "content": [
-                {"type": "text", "text": "按屏幕阅读顺序分别识别并回答所有完整可见的单选、多选或判断题，最多10道；每道题的题干、选项和答案分别放入 results。"},
+                {"type": "text", "text": "按屏幕阅读顺序分别识别并回答所有完整可见的单选、多选、判断、填空及简答/解答题，最多10道；每道题的题干、题型及答案分别放入 results。"},
                 {"type": "image_url", "image_url": {
                     "url": f"data:{image.media_type};base64,{encoded}"}},
             ]},

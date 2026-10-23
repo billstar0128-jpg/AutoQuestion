@@ -93,6 +93,40 @@ class DOMWorkflowTests(unittest.TestCase):
                          ['巴黎', ['Python', 'Java'], '正确', '木星', ['2', '3'], '正确'])
         self.assertEqual(browser._call(lambda: browser._adapter.page.locator(':checked').count()), 0)
 
+    def test_subjective_mixed_dom_uses_text_provider_and_preserves_all_six_results(self):
+        browser = BrowserSession(headless=True)
+        self.addCleanup(browser.close)
+        browser.start()
+        content = (Path(__file__).resolve().parents[1] / 'examples/browser_dom/mixed_subjective.html').read_text(encoding='utf-8')
+        browser._call(lambda: browser._adapter.page.set_viewport_size({'width': 1200, 'height': 900}))
+        browser._call(lambda: browser._adapter.page.set_content(content))
+        def answer(question):
+            fields = dict(question_type=question.question_type, confidence=0.99, short_reason='合成协议验证。')
+            if question.question_type == QuestionType.FILL_BLANK:
+                fields['blank_answers'] = ('巴黎', '伦敦')
+            elif question.question_type == QuestionType.SHORT_ANSWER:
+                fields['answer_text'] = '瑞利散射使短波蓝光更易被散射。' if question.question_text.startswith('5.') else '2x = 6，所以 x = 3。'
+            elif question.question_type == QuestionType.MULTIPLE_CHOICE:
+                chosen = question.options[:2]
+                fields.update(selected_indices=tuple(o.index for o in chosen), selected_labels=tuple(o.label for o in chosen),
+                              selected_texts=tuple(o.text for o in chosen))
+            else:
+                option = question.options[0]
+                fields.update(selected_index=option.index, selected_label=option.label, selected_text=option.text)
+            return AnswerResult(**fields)
+        provider = Mock()
+        provider.answer_question.side_effect = answer
+        with patch('autoquestion.dom.FakeLLMProvider', return_value=provider), self.assertLogs('autoquestion') as logs:
+            make_dom_callback(Config(input_mode='dom'), browser, Mock())(threading.Event())
+        results = [r.question_results for r in logs.records if hasattr(r, 'question_results')][0]
+        self.assertEqual(len(results), 6)
+        self.assertEqual(provider.answer_question.call_count, 6)
+        self.assertEqual([r['question']['question_type'] for r in results],
+                         ['single_choice', 'multiple_choice', 'true_false', 'fill_blank', 'short_answer', 'short_answer'])
+        self.assertEqual(results[3]['answer']['blank_answers'], ['巴黎', '伦敦'])
+        self.assertIn('x = 3', results[5]['answer']['answer_text'])
+        self.assertEqual(browser._call(lambda: browser._adapter.page.locator(':checked').count()), 0)
+
     def test_extraction_and_provider_failures_recover_without_vision(self):
         question = demo_question().model_copy(update={'source_type': SourceType.DOM})
         browser = Mock()

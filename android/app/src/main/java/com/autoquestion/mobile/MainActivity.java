@@ -64,7 +64,7 @@ public final class MainActivity extends Activity {
         page.addView(mark);
         addText(page, "手机上的屏幕答题助手", 15, MUTED, false, 8);
         addText(page, "题目在屏幕上，轻点一下。", 28, INK, true, 30);
-        addText(page, "单选、多选、判断题，同屏多道分别回答。\n用你自己的模型和 API Key。", 15, MUTED, false, 10);
+        addText(page, "单选、多选、判断、填空和简答/解答，同屏多道分别回答。\n用你自己的模型和 API Key。", 15, MUTED, false, 10);
 
         LinearLayout config = card(page, 24);
         addText(config, "01  配置图片模型", 18, INK, true, 0);
@@ -116,11 +116,13 @@ public final class MainActivity extends Activity {
         LinearLayout tips = card(page, 18);
         addText(tips, "小方框，三个动作", 18, INK, true, 0);
         addText(tips, "轻点 AQ  ·  识别当前屏幕全部完整题目\n拖动方框  ·  移动到不挡题的位置\n长按方框  ·  查看上次答案或停止", 14, MUTED, false, 12);
-        addText(tips, "按 Home 后可继续悬浮。点“停止并退出”、划除最近任务或在通知里停止，都会释放屏幕共享和悬浮窗。锁屏或系统结束共享后，需要重新开启。", 12, MUTED, false, 12);
+        addText(tips, "答案可长按选择或点按钮复制，填空支持逐空复制。复制后请自行切换应用粘贴。"
+                + "\n按 Home 后可继续悬浮。点“停止并退出”、划除最近任务或在通知里停止，都会释放屏幕共享和悬浮窗。锁屏或系统结束共享后，需要重新开启。", 12, MUTED, false, 12);
 
         addText(page, "只在你轻点时发送一张屏幕图片给所填 API。\n图片只在内存中处理，不写相册、文件或历史；答案也只在当前会话保留。"
+                + "\n主动复制后，系统剪贴板可能在停止应用后继续保留答案。应用不会自动读取或清空剪贴板。"
                 + "\n没有服务器，没有遥测，不会点击或提交答案。\n受保护或禁止截屏的应用可能无法识别。", 12, MUTED, false, 24);
-        addText(page, "AutoQuestion 0.3.0  ·  Android 8+", 12, MUTED, false, 18);
+        addText(page, "AutoQuestion 0.4.0  ·  Android 8+", 12, MUTED, false, 18);
         TextView license = text("Apache License 2.0", 12, PURPLE, false);
         license.setPadding(0, dp(8), 0, dp(8));
         license.setOnClickListener(view -> {
