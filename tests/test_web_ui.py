@@ -103,6 +103,21 @@ class WebUITests(unittest.TestCase):
         for path in ('/../.env', '/config.json', '/api/state?token=secret', '/web_ui.py'):
             self.assertEqual(self.request(path)[0], 404)
 
+    def test_update_endpoints_keep_auth_and_reject_client_download_paths(self):
+        from unittest.mock import Mock
+        updater = Mock()
+        updater.check.return_value = {'status': 'checking'}
+        updater.download.return_value = {'status': 'downloading'}
+        self.controller.updater = updater
+        for path in ('/api/update/check', '/api/update/download', '/api/update/install'):
+            self.assertEqual(self.request(path, {}, headers={'X-AutoQuestion-Token': ''})[0], 403)
+            self.assertEqual(self.request(path, {'url': 'https://evil.test/app'})[0], 400)
+        self.assertEqual(self.request('/api/update/check', {})[0], 200)
+        self.assertEqual(self.request('/api/update/download', {})[0], 200)
+        updater.check.assert_called_once_with()
+        updater.download.assert_called_once_with()
+        updater.launch_installer.assert_not_called()
+
     def test_oversize_rejection_is_readable_with_pending_request_data(self):
         # Exercise the Windows TCP reset race while the rejected body is queued.
         for _ in range(20):

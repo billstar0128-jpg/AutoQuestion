@@ -44,7 +44,7 @@
           target="_blank"
           rel="noreferrer"
           >GitHub ↗</a
-        ><span id="version">v0.2.2</span>
+        ><span id="version">v0.5.0</span>
       </div>
     </aside>
     <div class="app-shell">
@@ -62,10 +62,19 @@
       </header>
       <div id="preview-banner" class="preview-banner" hidden>
         这是公开的交互预览。实际 F8 答题与 API Key 配置在 Windows 本机运行。<a
-          href="https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.2.2/AutoQuestion-0.2.2-Windows-x64.zip"
+          href="https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.5.0/AutoQuestion-0.5.0-Windows-x64.zip"
           >下载 Windows App ↗</a
         >
       </div>
+      <section id="update-panel" class="update-panel" aria-label="应用更新" hidden>
+        <div><strong id="update-title">应用更新</strong><p id="update-message" class="muted"></p></div>
+        <div class="update-actions">
+          <button id="update-check" class="button outline">检查更新</button>
+          <button id="update-download" class="button" hidden>下载更新</button>
+          <button id="update-install" class="button" hidden>安装并重启</button>
+          <a id="update-manual" href="https://github.com/billstar0128-jpg/AutoQuestion/releases" target="_blank" rel="noreferrer" hidden>下载新版 App ↗</a>
+        </div>
+      </section>
       <main id="main">
         <section id="view-workspace" class="view">
           <div class="page-heading">
@@ -426,7 +435,7 @@
                   </p>
                   <a
                     class="button outline"
-                    href="https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.2.2/AutoQuestion-0.2.2-Windows-x64.zip"
+                    href="https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.5.0/AutoQuestion-0.5.0-Windows-x64.zip"
                     >下载 Windows App ↗</a
                   >
                 </div>
@@ -503,8 +512,7 @@
                   >反馈问题 ↗</a
                 >
                 <p>
-                  不会替你点击或提交。填空、简答完整求解与 OCR
-                  暂不支持。模型答案请核对。
+                  支持填空和简答/解答，答案可复制。不会替你点击或提交，模型答案请核对。
                 </p>
               </section>
             </aside>

@@ -2,7 +2,7 @@
 
 ## Assets and trust boundaries
 
-保护 API Key、窗口图像、结构化题目、浏览器隐私和用户配置。Windows 用户会话、Python 解释器、依赖、用户选择的 Provider 都是信任边界。项目不尝试防御已控制电脑的恶意管理员、完全失陷的 Windows Session、恶意 Python interpreter 或恶意 Provider。
+保护 API Key、窗口图像、结构化题目、浏览器隐私和用户配置。Windows 用户会话、Python 解释器、依赖、用户选择的 Provider，以及提供更新的 GitHub 项目账号和资产服务都是信任边界。项目不尝试防御已控制电脑的恶意管理员、完全失陷的 Windows Session、恶意 Python interpreter、恶意 Provider 或已被攻破的发布账号。
 
 ## Controls
 
@@ -18,6 +18,10 @@
 - 页面/图片里的指令被当作题目数据；程序没有执行模型返回命令、点击、文件访问或提交动作的通道。
 - 填空答案数量与识别空数匹配，主客观字段互斥、正文有长度上限；主观题正确性仍依赖模型和人工核对。
 - 答案以纯文本显示；仅用户主动复制时写系统剪贴板，运行时不读剪贴板。Android 标记敏感 Clip；OS 剪贴板与历史不属于本 App 会话内存清理范围。
+- 更新检查与 Provider 客户端隔离，只访问固定 GitHub 项目的公开发布信息，不附带模型 Key、题目、答案、截图或本机会话令牌。启动和前台检查是独立外网请求，离线 Demo 不调用模型并不等于 App 不访问 GitHub。
+- 更新只选择更高版本，包名/URL/大小/SHA-256 必须通过验证；有校验清单时先验证清单自身，再交叉核对。HTTPS 重定向仅允许 GitHub 官方资产地址，不把模型认证头带给更新服务。
+- Windows 拒绝 ZIP 路径逃逸、Windows 名称别名、重复目标、链接与解压超界；包写入独立目录，新版窗口确认就绪后再切换桌面快捷方式，不覆盖运行中的安装或用户配置。源码运行不自动安装二进制到源码目录。
+- Android 只暂存 APK，不申请相册或存储权限；安装前验证包名、期望版本、递增 versionCode、系统兼容性和已安装应用签名。只读 ContentProvider 交付固定更新包，用户仍需授权安装来源并在系统界面确认。
 
 ## Limits
 
@@ -25,4 +29,4 @@
 
 Doctor 调用 Windows 枚举接口只访问名称/类型，立即释放返回结构，不解码 CredentialBlob；这不意味着操作系统接口内部从未接触凭据。Secret audit 是有限模式检查与候选文件人工审查，不证明任意秘密不存在，更不能清除 Git history。
 
-依赖由用户主动通过 pip/Playwright 下载，本项目不 vendor 第三方源码或浏览器 runtime。发布前复核依赖许可、历史和候选文件，见 [Release Checklist](RELEASE_CHECKLIST.md)、[Security](../SECURITY.md)。
+源码依赖由用户通过 pip/Playwright 下载；便携安装包附带实际运行依赖及其许可。App 检查 GitHub 新版本后，只有主动点击下载才获取更新包；SHA-256 与来源约束不能代替对发布账号、构建流程和依赖的信任。发布前复核依赖许可、历史和候选文件，见 [Release Checklist](RELEASE_CHECKLIST.md)、[Security](../SECURITY.md)。

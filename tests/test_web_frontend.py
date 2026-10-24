@@ -245,6 +245,32 @@ class WebFrontendTests(unittest.TestCase):
         self.page.wait_for_function("() => navigator.clipboard.readText().then(text => text.replaceAll('\\r\\n', '\\n') === '第 1 空：北京\\n第 2 空：2')")
         self.assertEqual(self.errors, [])
 
+    def test_update_banner_startup_check_download_and_restart_are_interactive(self):
+        class Updater:
+            status, checks, downloads, installs = 'idle', 0, 0, 0
+            def snapshot(inner):
+                return dict(status=inner.status, current='0.5.0', available='0.6.0' if inner.status != 'idle' else None,
+                            message='合成更新状态', progress=100, install_supported=True)
+            def check(inner):
+                inner.checks += 1; inner.status = 'available'; return inner.snapshot()
+            def download(inner):
+                inner.downloads += 1; inner.status = 'ready'; return inner.snapshot()
+            def launch_installer(inner): inner.installs += 1
+            def close(inner): pass
+        updater = Updater()
+        self.controller.updater = updater
+        self.open_local()
+        self.page.locator('#update-download').wait_for(state='visible')
+        self.assertEqual(updater.checks, 1)
+        self.assertIn('0.6.0', self.page.locator('#update-title').inner_text())
+        self.page.locator('#update-download').click()
+        self.page.locator('#update-install').wait_for(state='visible')
+        self.assertEqual(updater.downloads, 1)
+        self.page.locator('#update-install').click()
+        self.page.wait_for_function("() => document.querySelector('#update-message').textContent.includes('正在重启')")
+        self.assertEqual(updater.installs, 1)
+        self.assertEqual(self.errors, [])
+
     def test_copy_failure_keeps_answer_selectable_and_reports_failure(self):
         from test_subjective_answering import subjective_payload
         self.open_local()

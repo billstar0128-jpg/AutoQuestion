@@ -31,6 +31,17 @@ public final class MainActivity extends Activity {
     private SecureStore store;
     private EditText url, model, key;
     private TextView status;
+    private TextView updateStatus;
+    private Button checkUpdate, updateAction, cancelUpdate;
+    private UpdateManager updater;
+    private boolean resumed;
+    private final android.os.Handler updateClock = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable updateTick = new Runnable() {
+        @Override public void run() {
+            if (!resumed || updater == null) return;
+            updater.check(false); updateClock.postDelayed(this, 15 * 60 * 1000L);
+        }
+    };
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -65,6 +76,27 @@ public final class MainActivity extends Activity {
         addText(page, "手机上的屏幕答题助手", 15, MUTED, false, 8);
         addText(page, "题目在屏幕上，轻点一下。", 28, INK, true, 30);
         addText(page, "单选、多选、判断、填空和简答/解答，同屏多道分别回答。\n用你自己的模型和 API Key。", 15, MUTED, false, 10);
+
+        LinearLayout updates = card(page, 20);
+        addText(updates, "应用更新", 18, INK, true, 0);
+        updater = new UpdateManager(this, this::renderUpdate);
+        addText(updates, "当前 " + updater.currentVersion() + "（" + updater.currentCode() + "）", 13, MUTED, false, 8);
+        updateStatus = text(updater.state().message, 13, MUTED, false);
+        updateStatus.setPadding(0, dp(8), 0, 0); updates.addView(updateStatus);
+        checkUpdate = button("检查更新", false, () -> updater.check(true)); updates.addView(checkUpdate);
+        updateAction = button("下载更新", true, () -> {
+            UpdateManager.State currentState = updater.state();
+            if (currentState.busy && currentState.checking && currentState.ready) {
+                updater.pause(); updater.prepareInstall(this::installUpdate);
+            } else if (currentState.busy) updater.cancel();
+            else if (updater.readyToInstall()) updater.prepareInstall(this::installUpdate);
+            else updater.download();
+        });
+        updateAction.setVisibility(View.GONE); updates.addView(updateAction);
+        cancelUpdate = button("取消本次更新", false, () -> updater.cancel());
+        cancelUpdate.setVisibility(View.GONE); updates.addView(cancelUpdate);
+        addText(updates, "启动或回到应用时检查 GitHub（含测试版），前台每 15 分钟检查一次。"
+                + "只提示和下载，安装由你在系统界面确认；安装前会停止悬浮识题，后台悬浮识题不检查更新。", 12, MUTED, false, 10);
 
         LinearLayout config = card(page, 24);
         addText(config, "01  配置图片模型", 18, INK, true, 0);
@@ -122,7 +154,7 @@ public final class MainActivity extends Activity {
         addText(page, "只在你轻点时发送一张屏幕图片给所填 API。\n图片只在内存中处理，不写相册、文件或历史；答案也只在当前会话保留。"
                 + "\n主动复制后，系统剪贴板可能在停止应用后继续保留答案。应用不会自动读取或清空剪贴板。"
                 + "\n没有服务器，没有遥测，不会点击或提交答案。\n受保护或禁止截屏的应用可能无法识别。", 12, MUTED, false, 24);
-        addText(page, "AutoQuestion 0.4.0  ·  Android 8+", 12, MUTED, false, 18);
+        addText(page, "AutoQuestion " + updater.currentVersion() + "  ·  Android 8+", 12, MUTED, false, 18);
         TextView license = text("Apache License 2.0", 12, PURPLE, false);
         license.setPadding(0, dp(8), 0, dp(8));
         license.setOnClickListener(view -> {
@@ -139,7 +171,49 @@ public final class MainActivity extends Activity {
         updateStatus();
     }
 
-    @Override protected void onResume() { super.onResume(); if (status != null) updateStatus(); }
+    @Override protected void onResume() {
+        super.onResume(); resumed = true;
+        if (status != null) updateStatus();
+        if (updater != null) { updater.installerReturned(); renderUpdate(updater.state()); updater.check(false); }
+        updateClock.removeCallbacks(updateTick); updateClock.postDelayed(updateTick, 15 * 60 * 1000L);
+    }
+    @Override protected void onPause() {
+        resumed = false; updateClock.removeCallbacks(updateTick);
+        if (updater != null) updater.pause();
+        super.onPause();
+    }
+    @Override protected void onDestroy() {
+        updateClock.removeCallbacksAndMessages(null);
+        if (updater != null) updater.close();
+        super.onDestroy();
+    }
+
+    private void renderUpdate(UpdateManager.State state) {
+        if (updateStatus == null) return;
+        updateStatus.setText(state.message);
+        checkUpdate.setEnabled(!state.busy);
+        updateAction.setVisibility(state.busy || state.ready || state.release != null ? View.VISIBLE : View.GONE);
+        updateAction.setText(state.busy && !(state.checking && state.ready) ? "取消更新" : state.ready ? "安装已下载更新"
+                : "下载 " + (state.release == null ? "更新" : state.release.version));
+        cancelUpdate.setVisibility(state.ready ? View.VISIBLE : View.GONE);
+    }
+
+    private void installUpdate() {
+        if (!resumed || !updater.readyToInstall()) return;
+        stopService(new Intent(this, CaptureService.class));
+        if (!getPackageManager().canRequestPackageInstalls()) {
+            updater.installationNeedsPermission();
+            try { startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName()))); }
+            catch (Exception error) { updater.installationFailed(); }
+            return;
+        }
+        Uri apk = UpdatePackageProvider.uri(this);
+        Intent install = new Intent(Intent.ACTION_VIEW).setDataAndType(apk, "application/vnd.android.package-archive")
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        install.setClipData(android.content.ClipData.newRawUri("AutoQuestion 更新包", apk));
+        try { updater.handingToInstaller(); startActivity(install); }
+        catch (Exception error) { updater.installationFailed(); }
+    }
 
     private void updateStatus() {
         if (CaptureService.isRunning()) setStatus("悬浮识题已开启 · 轻点左上角 AQ 开始");

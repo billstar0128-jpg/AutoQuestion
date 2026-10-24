@@ -12,11 +12,13 @@
 
 **0.1.0rc1 还是第一个公开 Release Candidate。** 如果你愿意测试，遇到难装、难懂、识别失败或者任何反直觉的地方，Issue 比“能跑”更有价值。
 
-当前版本为 **0.4.0**：同一屏幕里的单选、多选、判断、填空、简答和解答题可以分别识别、分别给出答案，单次最多 10 道完整可见题。Windows 和 Android 都支持选择、复制答案；填空可逐空复制，解答保留步骤和换行。上面的介绍保留首次公开 RC 的背景。
+当前版本为 **0.5.0**：增加 Windows 和 Android 的应用更新入口，启动和前台运行时检查 GitHub 新版本，由你点击下载、安装。原有同屏混合题、完整答案及两端复制继续保留。上面的介绍保留首次公开 RC 的背景。
 
-**电脑：[下载 Windows App](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.4.0/AutoQuestion-0.4.0-Windows-x64.zip) → 完整解压 → 双击 AutoQuestion.exe。** 不需要 Python 或 PowerShell。在 App 的独立窗口中配置模型和 API Key，保存后启动答题。请保留 _internal 文件夹。详见 [App 使用说明](docs/WEB_UI.md)。[网站首页](https://billstar0128-jpg.github.io/AutoQuestion/) 是下载入口，配置在本机 App 内完成。
+**电脑：[下载 Windows App](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.5.0/AutoQuestion-0.5.0-Windows-x64.zip) → 完整解压 → 双击 AutoQuestion.exe。** 不需要 Python 或 PowerShell。在 App 的独立窗口中配置模型和 API Key，保存后启动答题。请保留 _internal 文件夹。详见 [App 使用说明](docs/WEB_UI.md)。[网站首页](https://billstar0128-jpg.github.io/AutoQuestion/) 是下载入口，配置在本机 App 内完成。
 
-**手机：[下载 Android APK](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.4.0/AutoQuestion-0.4.0-Android.apk)**，适用 Android 8.0 及以上。安装后配置支持图片的模型，允许悬浮窗并通过系统屏幕共享授权，点击小方框识题。截图只在内存中处理，不写入相册。安装、操作和小米权限说明见 [Android 使用说明](docs/ANDROID.md)。
+**手机：[下载 Android APK](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.5.0/AutoQuestion-0.5.0-Android.apk)**，适用 Android 8.0 及以上。安装后配置支持图片的模型，允许悬浮窗并通过系统屏幕共享授权，点击小方框识题。截图只在内存中处理，不写入相册。安装、操作和小米权限说明见 [Android 使用说明](docs/ANDROID.md)。
+
+0.4.0 及更早版本没有更新模块，需要先手动安装本次新包。Android 使用同签名 APK 覆盖安装，不用卸载；Windows 完整解压新包后运行，用户配置保存在 AppData，不随便携目录替换而删除。
 
 ## What it does
 
@@ -27,7 +29,18 @@
 - 支持单选、多选、判断、填空、简答与解答，保留无字母选项的实际文本，答案可选择、复制。
 - 前台窗口 Vision、可选 Chrome / Edge 扩展 DOM、受管理本地 Demo DOM、AUTO 路由和无 Key 的 Offline Demo。
 - 首次设置向导、Provider Profiles、Windows Credential Manager、session-only Key 和本地 Doctor。
+- 启动、回到前台及前台每 15 分钟检查 GitHub 更新，包含已发布测试版；下载和安装仍由你主动点击。
 - 不会自动选择、点击、提交或翻到下一题。
+
+## 应用更新
+
+0.5.0 起，App 会检查本项目公开的 GitHub Releases。发现更高且可校验的版本后显示更新入口，不会静默安装。校验不通过、断网或 GitHub 限流时保留当前版本，原有答题继续可用。
+
+Windows 在工作台点击“下载更新”，校验完成后先停止答题，再点击“安装并重启”。新版解压到独立目录，确认新窗口启动后更新桌面快捷方式，原版本文件和 AppData 配置保留；以后从桌面快捷方式打开新版。源码运行只提供检查与手动下载 App 的入口，不会覆盖源码目录。详见 [Windows 更新说明](docs/WEB_UI.md)。
+
+Android 在主界面下载更新，校验后点击“安装已下载更新”；按系统提示允许此应用安装更新并确认。请用同签名安装包覆盖安装，不用卸载。下载期间留在主界面，切换到其他应用会取消正在执行的更新；悬浮识题期间不在后台检查更新。详见 [Android 更新说明](docs/ANDROID.md)。
+
+更新请求只读取 GitHub 的公开版本信息，不附带模型 API Key、题目、答案、截图或本机会话令牌；GitHub 仍会收到正常 HTTPS 请求信息。离线 Demo 不调用模型，但 App 的版本检查仍会访问 GitHub；断网不影响预置 Demo。详细边界见 [Privacy](PRIVACY.md)。
 
 ## Quick Start
 
@@ -283,7 +296,7 @@ $env:PLAYWRIGHT_BROWSERS_PATH = '0'
 
 以上启动沿用有效配置。AUTO 下将 Demo 置前台按 F8，普通题显示 `Input: DOM`；手动点击“打开 Canvas 测试题”，画布应完整显示，F8 显示 `DOM unavailable → Fallback: VISION`；返回普通题后再次 F8 恢复 DOM。Canvas 需要支持图片的真实模型，Fake 不支持 Vision。ESC 关闭本次 Chromium 并释放线程/热键。
 
-无 Key 用户优先在 Setup 选择 **Offline Demo**，F8 回答固定 MANUAL 首都题，无 Chromium、无截图、无 API。若要离线体验四道 DOM 题，可按 [高级配置](docs/CONFIGURATION.md) 临时设置 fake/dom；这些演示答案的 99% 是固定值，不是模型准确率。
+无 Key 用户优先在 Setup 选择 **Offline Demo**，F8 回答固定 MANUAL 首都题，无 Chromium、无截图、无模型 API 请求。App 的 GitHub 更新检查是独立的网络请求，断网仍可使用预置 Demo。若要离线体验四道 DOM 题，可按 [高级配置](docs/CONFIGURATION.md) 临时设置 fake/dom；这些演示答案的 99% 是固定值，不是模型准确率。
 
 ## Browser DOM Setup（可选）
 
@@ -322,7 +335,7 @@ Profile 是厂商预设，Protocol Provider 是实际请求适配器。
 
 已有 API root 核对依据保留：[DeepSeek](https://api-docs.deepseek.com/)、[Kimi](https://platform.kimi.com/docs/get-api-key)、[智谱](https://docs.bigmodel.cn/cn/guide/develop/openai/introduction)。真实预设可编辑地址和模型；预设可用不等于厂商所有模型都经过本项目验证。Vision 是具体 Model 的配置能力，不是品牌永久属性。
 
-Native Anthropic / Claude API **not supported in 0.4.0**。通过兼容网关调用 Claude 可以尝试 Custom，但不保证所有网关兼容。ChatGPT Plus / Pro 订阅不等于 OpenAI API Key 或 API billing balance，登录 ChatGPT App 不会自动提供 API 凭据；参见 [OpenAI API Quick Start](https://developers.openai.com/api/docs/quickstart)。
+Native Anthropic / Claude API **not supported in 0.5.0**。通过兼容网关调用 Claude 可以尝试 Custom，但不保证所有网关兼容。ChatGPT Plus / Pro 订阅不等于 OpenAI API Key 或 API billing balance，登录 ChatGPT App 不会自动提供 API 凭据；参见 [OpenAI API Quick Start](https://developers.openai.com/api/docs/quickstart)。
 
 ## Supported Question Types / limitations
 
@@ -330,7 +343,7 @@ Native Anthropic / Claude API **not supported in 0.4.0**。通过兼容网关调
 
 Vision 一张图片一次请求，按屏幕阅读顺序返回各题；DOM 按可靠题组分别请求并校验，整批完成后显示。单次最多 10 道，不自动滚动；Vision 跳过残缺或不可读的题，DOM 无法确定完整题组时拒绝提取或由 AUTO 回退 Vision。主观 DOM 需要明确题型和题组语义；不读取输入框里已经填写的答案。界面显示识别题干、参考答案和简短理由，请核对是否漏题。无字母选项不会生成 A/B/C/D。主观题结构校验只能检查字段和空数，不能证明知识或推导正确。
 
-不支持独立 OCR、原生 Anthropic、个人浏览器调试端口接管、自动点击/勾选/提交/下一题。扩展只读用户授权页面的当前可见语义题组；跨域 iframe、封闭 Shadow DOM、自绘控件、歧义题组可能需要 Vision。没有数据库、遥测或云账户。不宣称支持所有网站、所有 AI 模型或 100% accurate。0.4.0 提供 Windows x64 便携 EXE、Android APK 与源码，不提供 MSI、iOS、PyPI 或独立 wheel 分发。Android 只使用 Vision；系统禁止捕获的页面可能黑屏，不能绕过。
+不支持独立 OCR、原生 Anthropic、个人浏览器调试端口接管、自动点击/勾选/提交/下一题。扩展只读用户授权页面的当前可见语义题组；跨域 iframe、封闭 Shadow DOM、自绘控件、歧义题组可能需要 Vision。没有数据库、遥测或云账户。不宣称支持所有网站、所有 AI 模型或 100% accurate。0.5.0 提供 Windows x64 便携 EXE、Android APK 与源码，不提供 MSI、iOS、PyPI 或独立 wheel 分发。Android 只使用 Vision；系统禁止捕获的页面可能黑屏，不能绕过。
 
 ## Privacy and Security
 
@@ -365,13 +378,13 @@ Key 不进入普通 config、日志、repr 或仓库。不要上传真实 `.env`
 
 物理桌面另测 `.\.venv-win\Scripts\python.exe -X utf8 tests/smoke_browser_window.py -v`。关闭旧实例，测试窗口需获得前台；测试不会夺取其他用户窗口或读取真实屏幕像素。CI 不运行此可见 smoke；本地完整测试默认保留原生热键测试。
 
-[Development](docs/DEVELOPMENT.md) · [Technical Notes](docs/TECHNICAL_NOTES.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) · [Release Notes](docs/RELEASE_NOTES_0.4.0.md)
+[Development](docs/DEVELOPMENT.md) · [Technical Notes](docs/TECHNICAL_NOTES.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) · [Release Notes](docs/RELEASE_NOTES_0.5.0.md)
 
 ## License / publication state
 
 AutoQuestion 使用 **Apache License 2.0（Apache-2.0）**，完整条款见 [LICENSE](LICENSE)。
 
-**0.4.0 · Windows App、Android APK 与源码。** 历史标签保持不变。Chrome / Edge Browser DOM 有自动测试和本地合成页面测试覆盖；不代表所有真实网页均已人工验证。Android 尚未在用户的小米真机验收，权限与后台策略请按使用说明检查。
+**0.5.0 · Windows App、Android APK 与源码。** 历史标签保持不变。Chrome / Edge Browser DOM 有自动测试和本地合成页面测试覆盖；不代表所有真实网页均已人工验证。Android 尚未在用户的小米真机验收，权限与后台策略请按使用说明检查。
 
 [问题反馈](https://github.com/billstar0128-jpg/AutoQuestion/issues) · [Actions](https://github.com/billstar0128-jpg/AutoQuestion/actions/workflows/ci.yml) · [安全报告](https://github.com/billstar0128-jpg/AutoQuestion/security/advisories/new)
 

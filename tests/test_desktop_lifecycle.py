@@ -5,7 +5,7 @@ import sys
 from tempfile import TemporaryDirectory
 import threading
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / 'src'), str(ROOT / 'tests')]
@@ -41,6 +41,31 @@ class Window:
 
 @unittest.skipUnless(sys.platform == 'win32', 'Windows desktop instance')
 class DesktopLifecycleTests(unittest.TestCase):
+    def test_default_renderer_import_initializes_updater_without_network(self):
+        """Exercise the production default import branch; passing a renderer skips it."""
+        with TemporaryDirectory() as directory:
+            store = UserConfigStore(Path(directory) / 'config.json')
+            controller = UIController(store=store, backend=FakeCredentials(), run_app=simulated_app)
+            updater = Mock()
+            updater.snapshot.return_value = {'status': 'idle', 'current': '0.5.0'}
+            window, test = Window(), self
+            class Webview:
+                def create_window(self, title, url, **kwargs):
+                    return window
+                def start(self, **kwargs):
+                    test.assertIs(controller.updater, updater)
+                    test.assertEqual(controller.state()['update']['status'], 'idle')
+                    window.destroy()
+            with patch.dict(sys.modules, {'webview': Webview()}), \
+                 patch('autoquestion.updates.UpdateManager', return_value=updater) as factory, \
+                 patch('autoquestion.updates.ReleaseClient.open', side_effect=AssertionError('Unexpected network')) as network:
+                self.assertEqual(main(store=store, controller=controller), 0)
+            factory.assert_called_once_with()
+            network.assert_not_called()
+            updater.close.assert_called()
+            self.assertTrue(controller.closing)
+            self.assertFalse(store.path.exists())
+
     def child(self, profile, script):
         code = 'import sys; sys.path.insert(0, sys.argv[1]); from autoquestion.desktop_instance import DesktopInstance; ' + script
         return subprocess.run([sys.executable, '-c', code, str(ROOT / 'src'), str(profile)],

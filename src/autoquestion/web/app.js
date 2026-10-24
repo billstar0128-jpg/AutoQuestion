@@ -14,7 +14,7 @@ const preview =
   !token && (!loopback || location.pathname.includes("/preview/"));
 const locked = !token && !preview;
 const appDownload =
-  "https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.4.0/AutoQuestion-0.4.0-Windows-x64.zip";
+  "https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.5.0/AutoQuestion-0.5.0-Windows-x64.zip";
 let providers = [];
 let state = {
   config: null,
@@ -24,7 +24,7 @@ let state = {
   events: [],
   route: "",
 };
-let pollTimer, toastTimer, pairTimer;
+let pollTimer, toastTimer, pairTimer, updateTimer;
 let pending = false;
 let selectedResult = 0;
 let renderedResult;
@@ -309,7 +309,43 @@ function showResult(result) {
   $("answer-confidence").textContent =
     `模型给出的置信度 ${Math.round(answer.confidence * 100)}% · 不代表实际正确率`;
 }
+function renderUpdate() {
+  const update = state.update;
+  $("update-panel").hidden = !update || preview;
+  if (!update) return;
+  $("update-title").textContent = update.available
+    ? `新版本 ${update.available} · 当前 ${update.current}` : `应用更新 · ${update.current}`;
+  $("update-message").textContent = update.message;
+  if (update.status === "downloading") $("update-message").textContent += ` ${update.progress}%`;
+  $("update-check").disabled = ["checking", "downloading", "installing"].includes(update.status);
+  $("update-download").hidden = !update.install_supported || !update.available || !["available", "error"].includes(update.status);
+  $("update-install").hidden = update.status !== "ready";
+  $("update-install").disabled = state.active;
+  if (update.status === "ready" && state.active) $("update-message").textContent += " 请先停止本次答题。";
+  $("update-manual").hidden = update.install_supported || !update.available;
+}
+async function checkUpdate() {
+  if (preview || !state.update) return;
+  state.update = await api("/api/update/check", {});
+  renderUpdate();
+}
+$("update-check").addEventListener("click", () => action(checkUpdate));
+$("update-download").addEventListener("click", () => action(async () => {
+  state.update = await api("/api/update/download", {});
+  renderUpdate();
+}));
+$("update-install").addEventListener("click", () => action(async () => {
+  await api("/api/update/install", {});
+  clearTimeout(pollTimer);
+  clearInterval(updateTimer);
+  $("update-message").textContent = "正在重启到新版；保存的模型配置和 Key 保留，本次内存记录会清空。";
+  $("update-install").disabled = true;
+}));
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) checkUpdate().catch(() => {});
+});
 function render() {
+  renderUpdate();
   const config = state.config;
   const offline =
     (state.active_protocol || config?.protocol_provider) === "fake";
@@ -336,7 +372,7 @@ function render() {
     "busy",
     state.active && state.status !== "READY",
   );
-  $("version").textContent = "v" + (state.version || "0.4.0");
+  $("version").textContent = "v" + (state.version || "0.5.0");
   $("start-button").textContent = preview
     ? "下载 App 后开始 →"
     : state.active
@@ -593,6 +629,7 @@ $("exit-button").addEventListener("click", () =>
     )
       return;
     clearTimeout(pollTimer);
+    clearInterval(updateTimer);
     await api("/api/shutdown", {});
     sessionStorage.removeItem("aq-session");
     token = "";
@@ -645,7 +682,13 @@ async function initialize() {
     fillSettings(state.config);
     render();
     if (!state.config && !preview) view("settings");
-    if (!preview) pollTimer = setTimeout(poll, 1200);
+    if (!preview) {
+      pollTimer = setTimeout(poll, 1200);
+      checkUpdate().catch(() => {});
+      updateTimer = setInterval(() => {
+        if (!document.hidden) checkUpdate().catch(() => {});
+      }, 15 * 60 * 1000);
+    }
   } catch (error) {
     $("connection-label").textContent = "App 连接失败";
     $("preview-banner").hidden = false;

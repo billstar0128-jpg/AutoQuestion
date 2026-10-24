@@ -7,6 +7,13 @@ if not getattr(sys, 'frozen', False):
 
 
 def main():
+    if len(sys.argv) == 3 and sys.argv[1] == '--apply-update':
+        from autoquestion.updates import apply_update
+        try:
+            return apply_update(Path(sys.argv[2]))
+        except Exception:
+            # Old install/config remain untouched; user can reopen or download manually.
+            return 1
     if len(sys.argv) == 3 and sys.argv[1] == '--self-test':
         from autoquestion.desktop_self_test import run
         return run(Path(sys.argv[2]))
@@ -15,6 +22,9 @@ def main():
         return run(Path(sys.argv[2]))
     from autoquestion.desktop_instance import DesktopInstanceError
     try:
+        if len(sys.argv) == 3 and sys.argv[1] == '--updated-app':
+            from autoquestion.desktop_app import main as updated_desktop
+            return updated_desktop(update_receipt=Path(sys.argv[2]))
         from autoquestion.web_ui import main as open_ui
         return open_ui()
     except DesktopInstanceError as error:

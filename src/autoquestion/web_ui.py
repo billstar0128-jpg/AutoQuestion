@@ -38,7 +38,7 @@ class UIEvents(logging.Handler):
 
 
 class UIController:
-    def __init__(self, *, store=None, backend=None, run_app=None):
+    def __init__(self, *, store=None, backend=None, run_app=None, updater=None):
         self.store = UserConfigStore() if store is None else store
         self.backend = WindowsCredentials() if backend is None else backend
         if run_app is None:
@@ -48,6 +48,7 @@ class UIController:
         self.runner = self.bridge = self.thread = None
         self.cancel = threading.Event()
         self.closing = False
+        self.updater = updater
         self.session_secret = None
         self.secret_scope = None
         self.history = []
@@ -96,7 +97,34 @@ class UIController:
                         active_profile=self.active_profile if active else '',
                         active_mode=self.active_mode if active else '',
                         active_protocol=self.active_protocol if active else '',
-                        history=list(self.history), events=list(self.events))
+                        history=list(self.history), events=list(self.events),
+                        update=self.updater.snapshot() if self.updater else None)
+
+    def update_check(self):
+        if self.updater is None or self.closing:
+            raise UIError('请从桌面 App 检查更新。')
+        return self.updater.check()
+
+    def update_download(self):
+        from .updates import UpdateError
+        if self.updater is None or self.closing:
+            raise UIError('更新服务尚未就绪。')
+        try:
+            return self.updater.download()
+        except UpdateError as error:
+            raise UIError(str(error)) from None
+
+    def update_install(self):
+        from .updates import UpdateError
+        with self.lock:
+            self._require_stopped()
+            if self.updater is None:
+                raise UIError('更新服务尚未就绪。')
+            try:
+                self.updater.launch_installer()
+            except UpdateError as error:
+                raise UIError(str(error)) from None
+        return {'installing': True}
 
     def _require_stopped(self):
         if self.closing:
@@ -274,6 +302,8 @@ class UIController:
     def begin_close(self):
         with self.lock:
             self.closing = True
+        if self.updater:
+            self.updater.close()
         self.stop()
 
     def close(self):
@@ -402,6 +432,9 @@ class UIHandler(BaseHTTPRequestHandler):
                    '/api/start': lambda: self.server.controller.start(data),
                    '/api/stop': self.server.controller.stop,
                    '/api/pair': self.server.controller.pair,
+                   '/api/update/check': self.server.controller.update_check,
+                   '/api/update/download': self.server.controller.update_download,
+                   '/api/update/install': self.server.controller.update_install,
                    '/api/clear': self.server.controller.clear}
         if self.path == '/api/shutdown' and not data:
             self._reply(200, {'closing': True})
@@ -420,6 +453,10 @@ class UIHandler(BaseHTTPRequestHandler):
             return self._reply(400, {'error': '操作参数无效。'})
         try:
             self._reply(200, actions[self.path]())
+            if self.path == '/api/update/install':
+                self.server.controller.begin_close()
+                if self.server.exit_callback:
+                    threading.Thread(target=self.server.exit_callback, daemon=True).start()
         except UIError as exc:
             self._reply(400, {'error': str(exc)})
         except Exception:

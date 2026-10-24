@@ -1532,3 +1532,8 @@ select {
         transition: none !important;
     }
 }
+.update-panel { margin: 20px 40px 0; padding: 16px 20px; display: flex; gap: 20px; align-items: center; justify-content: space-between; background: #f0ebff; border: 1px solid #dfd5f8; border-radius: 16px; }
+.update-panel[hidden] { display: none; }
+.update-panel p { margin: 6px 0 0; font-size: 13px; }
+.update-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; flex-shrink: 0; }
+@media (max-width: 900px) { .update-panel { margin: 16px; align-items: flex-start; flex-direction: column; } }

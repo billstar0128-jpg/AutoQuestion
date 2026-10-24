@@ -24,8 +24,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
-import java.net.URLConnection;
-import java.net.URLStreamHandler;
 import java.security.Principal;
 import java.security.cert.Certificate;
 import java.util.ArrayDeque;
@@ -65,12 +63,11 @@ public final class MobileSmokeTest extends InstrumentationTestCase {
                 | android.accessibilityservice.AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS;
         automation.setServiceInfo(info);
         // Reject any unexpected destination. No model credentials or real API are used.
-        URL.setURLStreamHandlerFactory(protocol -> "https".equals(protocol) ? new URLStreamHandler() {
-            @Override protected URLConnection openConnection(URL url) throws IOException {
-                if (!"synthetic.autoquestion.invalid".equals(url.getHost())) throw new IOException("Unexpected test destination");
-                return new FakeConnection(url);
-            }
-        } : null);
+        MockHttps.install(url -> {
+            if (UpdatePolicy.RELEASES_URL.equals(url.toString())) return new UpdateSmokeTest.Response(url, "[]".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            if (!"synthetic.autoquestion.invalid".equals(url.getHost())) throw new IOException("Unexpected test destination");
+            return new FakeConnection(url);
+        });
         shell("appops set com.autoquestion.mobile SYSTEM_ALERT_WINDOW allow");
         shell("pm grant com.autoquestion.mobile android.permission.POST_NOTIFICATIONS");
         SecureStore store = new SecureStore(context);

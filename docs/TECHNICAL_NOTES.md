@@ -1,6 +1,16 @@
 # Technical Notes
 
-从 M1–M12 README 保留的历史协议和实现细节。当前 0.2.0 启动、路由和验收以 [README](../README.md)、[Architecture](ARCHITECTURE.md) 和 [M15 Acceptance](MANUAL_ACCEPTANCE_M15.md) 为准。受管理 Canvas 手动验收使用 --open-demo；普通 AUTO 不自动启动浏览器。
+从 M1–M12 README 保留的历史协议和实现细节。当前 0.5.0 启动、路由、更新和验收以 [README](../README.md)、[Architecture](ARCHITECTURE.md) 与对应版本验证记录为准；[M15 Acceptance](MANUAL_ACCEPTANCE_M15.md) 保留当时的浏览器验收背景。受管理 Canvas 手动验收使用 --open-demo；普通 AUTO 不自动启动浏览器。
+
+## 0.5.0 版本检查与安装
+
+应用新增一条与题目分析分离的外网路径：启动、返回可见界面及前台计时读取固定项目的公开 GitHub Releases。它不经过 LLM SDK，不发送模型 Key、模型配置、题目、答案、截图或本机 UI Token。只有点击下载才获取安装包；离线 Demo 无模型请求，但桌面 App 的自动检查仍可能访问 GitHub。CLI Doctor 与固定题目协议不因此增加模型请求。
+
+版本按 major/minor/patch 数值与 alpha/beta/rc 阶段比较，不按 GitHub 创建时间或字符串排序；已发布测试版可参与选择，draft 和不高于当前的版本被排除。资产名称与固定仓库地址匹配，API digest、实际大小及 SHA-256 必须一致；存在 SHA256SUMS.txt 时先核对清单 digest，再交叉核对目标记录。下载仅经 HTTPS 与受限官方资产地址，跳转次数和响应/安装包大小均有限制。参考 [GitHub Releases API](https://docs.github.com/en/rest/releases/releases) 和 [Release assets API](https://docs.github.com/en/rest/releases/assets)。
+
+Windows `UpdateManager` 的后台线程不持有 RuntimeSettings 或 Key；下载、解压目录位于本机 AppData 受控位置。只对打包 EXE 提供安装切换，源码运行保留手动下载入口。更新 ZIP 检查原始文件名、防目录逃逸和名称别名，限制解压预算。helper 等旧进程结束后启动新版，确认其原生窗口的版本/PID 回执，再更新桌面快捷方式；旧程序目录与配置保留。
+
+Android 使用独立的 UpdatePolicy / UpdateHttp，不从 Provider 连接复用认证信息。Activity 在前台持有更新任务，后台悬浮服务不执行检查；APK 只写私有缓存。安装前再次验证摘要、包名、版本与当前签名，并由只读临时 URI 交给系统安装器；授权和安装仍由用户确认。更新文件落盘不改变截图不落盘的规则。具体操作与边界见 [Windows](WEB_UI.md)、[Android](ANDROID.md) 和 [Privacy](../PRIVACY.md)。
 
 ## 数据结构与一致性策略
 
@@ -116,15 +126,15 @@ F8 → TaskRunner Lock / debounce → EXTRACTING
 
 `browser_session.py` 启动独立临时 context，不接管个人浏览器、不使用用户 profile。Playwright 由同一专用 asyncio 线程持有，事件循环在 READY 空闲期间持续处理导航和 route 回调；对外保留同步接口，并串行执行取题操作，避免每次 F8 新建工作线程违反 Playwright 线程归属。只允许内置 Demo 文件的页面请求；无 HTTP 服务。`capture/browser.py` 和只读 `capture/dom_extract.js` 提取当前渲染 DOM，不调用模型、不操作答案；`dom.py` 复用既有 Text Provider。Fake 严格匹配四道 DOM Demo（两道单选、一道多选、一道判断），保留原 MANUAL 示例，不对任意题目伪装推理。
 
-识别综合 fieldset/legend、role、label/for、ARIA 名称、input type、name/form、父子关系和可见文字。删除所有 Demo data 属性仍能识别四题。隐藏元素和隐藏文字被排除；多个题组只有唯一聚焦或明确 current 标记时才选择，否则报错，不猜第一题。动态 JavaScript 更新后的内容在下次 F8 重新读取。
+识别综合 fieldset/legend、role、label/for、ARIA 名称、input type、name/form、父子关系和可见文字。删除所有 Demo data 属性仍能识别四题。隐藏元素和隐藏文字被排除；生产批提取按屏幕顺序读取最多 10 道完整题，题组边界不可靠时拒绝整批。旧单题提取接口保留唯一聚焦或 current 标记选择，否则拒绝多组歧义。动态 JavaScript 更新后的内容在下次 F8 重新读取。
 
 选项按 DOM 顺序从 index=0 编号。`A. 巴黎`、`A、巴黎`、`A．巴黎`、`(A) 巴黎` 提取明确前缀；仅空格形式 `A 巴黎` 要求全组选项存在连续 A/B/C… 佐证。无法确定时保留完整文本和 label=null，`C`、`C language` 不擅自拆成字母标签。普通 radio 推断 single_choice，checkbox 推断 multiple_choice，两项明显“正确/错误”等 radio 推断 true_false；显式题型标记冲突则报错。
 
 ### 范围、隐私与测试
 
-DOM Adapter 仅支持有可靠语义关联的当前主文档题组，不宣称通用网站识别。不处理 iframe、Shadow DOM、canvas、仅图片题或任意个人浏览器；可见性排除隐藏内容，但不模拟视口遮挡和裁切。强制 dom 模式遇到无题、标签缺失、多组歧义、连接失效时返回 BrowserExtractionError，任务恢复 READY，不回退。单选、多选和判断均调用现有 Provider。AUTO 的严格回退规则见 [Architecture](ARCHITECTURE.md)。
+受管理 DOM Adapter 读取主文档中有可靠语义的题组；普通浏览器扩展另支持有限的同源 iframe / open Shadow DOM 遍历，不绕过跨域或 closed Shadow 边界。提取会检查视口完整性，但不能理解所有遮挡、CSS 背景图或自绘内容；主观题包含必要 Canvas、图片或 SVG 等题图时拒绝只取文字。强制 dom 模式遇到无题、缺失条件、题组歧义或连接失效时返回 BrowserExtractionError，任务恢复 READY，不回退。五类题都进入现有 Text Provider；主观题还需要明确题型与空数。AUTO 的严格回退规则见 [Architecture](ARCHITECTURE.md)。
 
-DOM 提取不读取 Cookie、浏览器存储、密码/input value、认证请求头或整页源码。只将局部结构化题干和选项交给既有 Provider；页面/底层异常不会原样写入日志，未记录 URL、标题或 profile。控制台显示题干和答案，没有新增历史存储。
+DOM 提取不读取 Cookie、浏览器存储、密码/input value、已填 textarea / contenteditable 内容、认证请求头或整页源码。只将局部结构化题干、题型、选项和填空数量交给既有 Provider；页面/底层异常不会原样写入日志，未记录 URL、标题或 profile。控制台显示题干和答案，工作台题目记录只在内存中保留，不写截图或题目历史文件。
 
 `test_browser.py` 用真实 headless Chromium 验证四题、无专用属性、ARIA、动态渲染、隐藏内容排除、歧义/关闭/断连及线程清理。`test_dom.py` 验证真实 DOM→Fake/SDK MockTransport、错误后 READY/再次触发、BUSY/退出、入口清理及默认 Vision 保持。测试中仅为模拟用户翻题而点击导航按钮，生产提取代码没有点击操作。完整测试需先安装 Chromium，原有 Windows 热键测试仍需无其他实例占用 F8/ESC。自动测试不代表物理热键与可见界面人工验收已完成。
 

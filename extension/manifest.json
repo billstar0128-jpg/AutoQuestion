@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AutoQuestion Browser DOM",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Read complete foreground questions only when AutoQuestion requests them with F8.",
   "minimum_chrome_version": "116",
   "permissions": ["activeTab", "scripting"],

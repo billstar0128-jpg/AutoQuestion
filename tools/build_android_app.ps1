@@ -2,7 +2,8 @@ param(
     [string]$JavaHome = $env:JAVA_HOME,
     [string]$SdkRoot = $env:ANDROID_HOME,
     [switch]$Release,
-    [switch]$SkipChecks
+    [switch]$SkipChecks,
+    [switch]$UpdateTestFixtures
 )
 
 # No Android SDK, API key, signing key, or local settings are bundled into the APK.
@@ -53,6 +54,55 @@ try {
     $env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
     $env:GRADLE_USER_HOME = Join-Path $projectRoot 'build\android-gradle-cache'
 
+    if ($UpdateTestFixtures) {
+        if ($Release) { throw 'Generate disposable debug update fixtures separately from a release build.' }
+        # These APKs stay ignored, use only disposable test signing keys, and never ship in the app.
+        $fixtures = Join-Path $projectRoot 'build\android-update-fixtures'
+        $fixtureSource = Join-Path $fixtures 'source'
+        if (Test-Path -LiteralPath $fixtureSource) {
+            $resolvedSource = (Resolve-Path -LiteralPath $fixtureSource).Path
+            $expectedSource = [IO.Path]::GetFullPath((Join-Path $projectRoot 'build\android-update-fixtures\source'))
+            if ($resolvedSource -ne $expectedSource) { throw 'Refusing to clean an unexpected fixture directory.' }
+            Remove-Item -LiteralPath $resolvedSource -Recurse -Force
+        }
+        $fixtureAndroid = Join-Path $fixtureSource 'android'
+        $fixtureAssets = Join-Path $fixtures 'assets'
+        New-Item -ItemType Directory -Force -Path (Join-Path $fixtureAndroid 'app\src'), $fixtureAssets | Out-Null
+        Copy-Item -LiteralPath (Join-Path $projectRoot 'LICENSE') -Destination $fixtureSource
+        foreach ($name in @('settings.gradle', 'build.gradle')) {
+            Copy-Item -LiteralPath (Join-Path $projectRoot "android\$name") -Destination $fixtureAndroid
+        }
+        foreach ($sourceSet in @('main', 'debug')) {
+            Copy-Item -LiteralPath (Join-Path $projectRoot "android\app\src\$sourceSet") `
+                -Destination (Join-Path $fixtureAndroid 'app\src') -Recurse
+        }
+        $fixtureConfig = Get-Content -LiteralPath (Join-Path $projectRoot 'android\app\build.gradle') -Raw
+        if ($fixtureConfig -notmatch "versionName '0\.5\.0'") { throw 'Update the synthetic next-version fixtures before testing a different app version.' }
+        $fixtureConfig = $fixtureConfig.Replace('versionCode 500', 'versionCode 600').Replace("versionName '0.5.0'", "versionName '0.6.0'")
+        $fixtureConfig = $fixtureConfig.Replace("applicationId 'com.autoquestion.mobile'", "applicationId (findProperty('fixtureId') ?: 'com.autoquestion.mobile')")
+        [IO.File]::WriteAllText((Join-Path $fixtureAndroid 'app\build.gradle'), $fixtureConfig, [Text.UTF8Encoding]::new($false))
+        & $gradleExe -p $fixtureAndroid --no-daemon --console=plain assembleDebug
+        if ($LASTEXITCODE -ne 0) { throw 'Could not build same-signer update test fixture.' }
+        $fixtureApk = Join-Path $fixtureAndroid 'app\build\outputs\apk\debug\app-debug.apk'
+        $sameSigner = Join-Path $fixtureAssets 'update-same-signer.apk'
+        Copy-Item -LiteralPath $fixtureApk -Destination $sameSigner -Force
+        $testKey = Join-Path $fixtures 'wrong-signer.p12'
+        if (-not (Test-Path -LiteralPath $testKey)) {
+            & (Join-Path $env:JAVA_HOME 'bin\keytool.exe') -genkeypair -noprompt -keystore $testKey -storetype PKCS12 `
+                -alias synthetic -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=Synthetic disposable update test' `
+                -storepass synthetic-password -keypass synthetic-password
+            if ($LASTEXITCODE -ne 0) { throw 'Could not generate a disposable negative-test signing key.' }
+        }
+        & (Join-Path $env:ANDROID_HOME 'build-tools\35.0.0\apksigner.bat') sign --ks $testKey --ks-key-alias synthetic `
+            --ks-pass pass:synthetic-password --key-pass pass:synthetic-password --v4-signing-enabled false `
+            --out (Join-Path $fixtureAssets 'update-wrong-signer.apk') $sameSigner
+        if ($LASTEXITCODE -ne 0) { throw 'Could not create the wrong-signer negative-test fixture.' }
+        & $gradleExe -p $fixtureAndroid --no-daemon --console=plain '-PfixtureId=com.autoquestion.malicious' assembleDebug
+        if ($LASTEXITCODE -ne 0) { throw 'Could not create the wrong-package negative-test fixture.' }
+        Copy-Item -LiteralPath $fixtureApk -Destination (Join-Path $fixtureAssets 'update-wrong-package.apk') -Force
+        Write-Output "Disposable update test APKs: $fixtureAssets"
+    }
+
     if ($Release -and -not $env:ANDROID_KEYSTORE_FILE) {
         # Stable across clean builds. This folder is outside the checkout and must be backed up privately.
         $signingDir = Join-Path $env:LOCALAPPDATA 'AutoQuestionAndroidSigning'
@@ -95,6 +145,7 @@ try {
 
     $tasks = @('assembleDebug')
     if (-not $SkipChecks) { $tasks += @('testDebugUnitTest', 'lintDebug') }
+    if ($UpdateTestFixtures) { $tasks += 'assembleDebugAndroidTest' }
     if ($Release) { $tasks += 'assembleRelease' }
     & $gradleExe -p (Join-Path $projectRoot 'android') --no-daemon --console=plain @tasks
     if ($LASTEXITCODE -ne 0) { throw 'Android build or validation failed.' }

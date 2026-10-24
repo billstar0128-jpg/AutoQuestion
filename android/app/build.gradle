@@ -9,8 +9,8 @@ android {
         applicationId 'com.autoquestion.mobile'
         minSdk 26
         targetSdk 36
-        versionCode 400
-        versionName '0.4.0'
+        versionCode 500
+        versionName '0.5.0'
         testInstrumentationRunner 'android.test.InstrumentationTestRunner'
     }
     signingConfigs {
@@ -35,6 +35,8 @@ android {
     }
     testOptions { unitTests.returnDefaultValues = true }
     sourceSets.main.assets.srcDir layout.buildDirectory.dir('generated/licenseAssets')
+    // Locally generated APKs are used only by disposable-emulator update tests.
+    sourceSets.androidTest.assets.srcDir rootProject.file('../build/android-update-fixtures/assets')
 }
 
 tasks.register('copyProjectLicense', Copy) {

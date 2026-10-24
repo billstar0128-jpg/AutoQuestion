@@ -2,11 +2,23 @@
 
 ## 普通用户：下载 Windows App
 
-[下载 AutoQuestion-0.4.0-Windows-x64.zip](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.4.0/AutoQuestion-0.4.0-Windows-x64.zip)，右键“全部解压”，保留 _internal 文件夹，双击 AutoQuestion.exe。无需 Python、依赖安装或 PowerShell。App 会打开独立桌面窗口；在这里可以真正输入、保存配置并运行答题。
+[下载 AutoQuestion-0.5.0-Windows-x64.zip](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.5.0/AutoQuestion-0.5.0-Windows-x64.zip)，右键“全部解压”，保留 _internal 文件夹，双击 AutoQuestion.exe。无需 Python、依赖安装或 PowerShell。App 会打开独立桌面窗口；在这里可以真正输入、保存配置并运行答题。
 
 网站首页只提供 App 下载与说明，API Key 不在网上填写。先前网页是交互预览，无法保存配置；该入口已改成明确的下载页。可选交互预览放在单独的 preview/，其“配置”按钮引导下载 App。
 
 便携 App 未做商业代码签名，不要求管理员权限。下载时可能出现 Windows 未知发布者提示；发布页提供 SHA256 校验文件。许可证与实际依赖的完整许可文本随包附带，包含 Python、PyInstaller 例外说明等。
+
+## 检查、下载和安装更新
+
+从 0.5.0 起，原生 App 工作台显示“应用更新”。启动、窗口返回前台和前台运行期间每 15 分钟读取本项目公开 GitHub Releases；也可点击“检查更新”。已发布测试版参与检查，按数字版本比较，只提供高于当前版本且包含本机安装包与有效校验信息的版本。无可用新包、检查失败与下载失败分别显示状态，检查失败不会阻止答题。
+
+点击“下载更新”后，程序验证 GitHub 资产的 SHA-256 和文件大小；该发布有 `SHA256SUMS.txt` 时，还验证清单本身并交叉核对。校验通过后先停止答题，等待正在处理的任务退出，再点击“安装并重启”。模型配置和 Windows 安全凭据保留，本次内存题目记录随重启清空。
+
+更新包只写入 `%LOCALAPPDATA%\AutoQuestionApp\` 的受控目录，不覆盖原便携目录。新版窗口确认启动后才切换桌面 `AutoQuestion.lnk`；不能启动时保留原桌面入口。旧版本文件不会自动删除；更新后请从桌面快捷方式打开新版，旧目录里的 EXE 仍是旧版。程序不会要求管理员权限，也不会替你卸载旧版。
+
+源码运行可以检查版本并打开手动下载入口，不能自动覆盖仓库或源码环境。0.4.0 及更早版本没有更新模块，需要先手动安装本次 App。网络不可用时仍可使用原版本和本地 Demo。
+
+版本检查使用独立的公开 HTTPS 请求，不发送 API Key、模型配置、题目、答案、截图或本机会话令牌。GitHub 可收到普通网络请求信息；离线 Demo 不调用模型，但 App 的更新检查仍会访问 GitHub。详见 [Privacy](../PRIVACY.md)。
 
 ## 源码用户
 

@@ -53,6 +53,18 @@ Provider Profile (brand / editable defaults)
 
 原生 Java App 使用独立的 HTTPS Chat Completions 客户端，共用同屏多题 JSON 协议，不依赖 Windows 服务。MediaProjection 与 mediaProjection 类型前台服务持有一份捕获会话，悬浮按钮点击后才编码一帧并请求。Android Keystore 保存加密密钥，截图和答案只在内存中。服务停止时释放悬浮窗、VirtualDisplay、ImageReader、MediaProjection 和请求。完整操作与系统限制见 [Android](ANDROID.md)。
 
+## Application updates — 0.5.0
+
+版本检查是独立于 F8 / Provider 的公开 HTTPS 路径，不携带模型配置、Key、题目、答案、截图或本机 UI 会话令牌。两端读取固定 `billstar0128-jpg/AutoQuestion` 的 Releases 列表，不使用会排除测试版的 latest 端点；排除 draft，按数值版本与 alpha/beta/rc 阶段顺序选择更高且适用的平台包。检查失败不阻断答题，下载和安装均由用户主动操作。
+
+GitHub 资产必须具有准确名称、已上传状态、大小和 SHA-256 digest。下载只经固定仓库的 HTTPS 地址与受限 GitHub 资产 CDN，最多五次跳转；不复用 Provider 请求头。有 `SHA256SUMS.txt` 时先校验清单本身，再核对目标包。它验证来源约束和完整性，不代表 GitHub 项目账号永远不会失陷。
+
+Windows `updates.py` 使用独立 worker，下载后检查 ZIP 的原始路径、重复名称、链接与解压预算，写入 `%LOCALAPPDATA%\AutoQuestionApp\` 的新目录。用户停止答题并点击安装后，旧进程有序退出；helper 启动新版，等待其原生窗口携版本/PID 回执，再更新桌面快捷方式。原便携目录和 AppData 配置不覆盖、不删除。源码环境只能检查并手动下载 App，不能自动覆盖源码。
+
+Android Activity 持有独立 UpdateManager，不由悬浮捕获服务轮询。主界面恢复与前台计时触发检查，进入后台会取消正在执行的检查或下载。APK 位于应用私有缓存，交付安装前再次验证哈希、包名、版本名、递增 versionCode、最低系统版本和当前签名；限定的只读 ContentProvider 仅暴露该更新文件，系统安装器仍要求用户授权与确认。
+
+只有安装包和公开更新元数据会写入更新目录/缓存，截图的内存处理策略不变。0.4.0 及更早版本没有更新模块，需要手动安装一次新版本。用法见 [Windows](WEB_UI.md)、[Android](ANDROID.md)，网络披露见 [Privacy](../PRIVACY.md)。
+
 ## Configuration and secrets
 
 Process environment > explicit `--env-file` > saved AppData config > defaults。不会自动加载 `.env`。Config 的兼容默认仍为 fake/vision；无完整配置的交互首次启动由 Setup 接管，API 向导推荐 AUTO。
@@ -72,6 +84,9 @@ UserConfig 只含非秘密字段与凭据引用。Key 优先来自显式配置�
 | browser_identity / bridge_protocol / browser_bridge | Windows 进程归属、受限协议、认证 loopback 会话 |
 | extension | MV3 配对、逐站授权、前台 metadata、按请求只读提取 |
 | schemas / llm / dom / vision / demo | 题目协议、求解请求和输出 |
+| desktop_app / desktop_instance / web_ui | 原生工作台、单实例、认证本机 UI 和答题生命周期 |
+| updates | 独立的 GitHub 版本检查、受限下载/解压和 Windows 更新切换 |
+| Android UpdatePolicy / UpdateHttp / UpdateManager / UpdatePackageProvider | 版本与下载约束、APK 验证和系统安装交付 |
 | doctor / secret_safety | 本地只读诊断，无业务副作用 |
 
 实现边界、Schema 细节与演进记录见 [Development](DEVELOPMENT.md)。
