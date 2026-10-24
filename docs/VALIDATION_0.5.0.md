@@ -13,6 +13,14 @@
 - compileall、pip check、静态网站构建、发布审计通过；打包环境另测 6 项主观题测试通过。
 - 可见 HWND/DOM/Canvas smoke 已执行，当前前台 PID 属于其他窗口，触发测试保护而未通过。没有强制接管该窗口；headless DOM/Canvas 与原生生命周期测试另有通过结果。
 
-Android 最终构建及安装结果完成后补充。
+Android 最终验证：
+
+- 36 项 JVM 测试通过，Lint 0 errors、1 warning（测试用 org.json 新版本提示，不是运行时依赖）。
+- API 36 独立模拟器：六题混排、真实长按选择/Copy、系统剪贴板、多行粘贴、旋转和停止回归通过，12.676 秒。
+- 真实 APK 安全与取消测试通过，0.430 秒：正确签名、错误包名、错误签名、降级、篡改、取消、READY 状态重新检查保留已校验包、只读 Provider 边界。未授权 shell 读取 Provider 实际被 SecurityException 拒绝。
+- 主界面自动/手动检查、下载、系统未知来源授权、回 App 再点击安装、真实系统安装确认通过，2.840 秒。宿主实际点击系统 Update 后，600 版本的新进程验证 UID、Android Keystore Key 和 URL/model 保留，通过，0.088 秒。
+- 上述更新使用独立生成的同签 0.6.0 测试 APK 和模拟 GitHub 响应，不发布该测试版本，不发送真实模型请求。构建脚本 `-UpdateTestFixtures` 可生成这些仅 AndroidTest 使用的包；默认/发布构建不包含测试宿主或网络替身。
+- 正式原签名 0.4.0→0.5.0 覆盖安装成功，UID 保持，冷启动 386 ms。0.5.0 APK 为 62,420 字节，证书保持原发布证书；无 debuggable、测试类/假域/测试 Key、媒体/存储/无障碍权限，新增安装权限仅用于系统确认更新。APK LICENSE 与根文件字节一致。
+- APK SHA-256：`fc807f4ba25d800abacd55187423af7578cc4ab9cadd3faa68daeba6b1f18d15`。
 
 小米 / HyperOS 真机权限和实际服务商模型效果仍需用户验收。旧版本必须手动覆盖安装本次新版，之后才能在 App 内检查更新；Android 的安装仍需系统确认，不能静默升级。
