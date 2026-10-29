@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from io import BytesIO
 import logging
 import sys
+import threading
 from typing import Iterator
 
 import mss
@@ -16,6 +17,18 @@ LOGGER = logging.getLogger("autoquestion")
 MAX_CAPTURE_PIXELS = 32_000_000
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 DEFAULT_MAX_EDGE = 2048
+_capture_context = threading.local()
+
+
+@contextmanager
+def own_capture_scope(guard):
+    """Only captures constructed by this native App session inherit its guard."""
+    previous = getattr(_capture_context, 'guard', None)
+    _capture_context.guard = guard
+    try:
+        yield
+    finally:
+        _capture_context.guard = previous
 
 
 class CaptureError(RuntimeError):
@@ -148,6 +161,7 @@ class ScreenCapture:
         self.max_edge = max_edge
         self._windows = WindowsWindowAPI()
         self.target_guard = None
+        self.capture_guard = getattr(_capture_context, 'guard', None)
 
     def snapshot_target(self) -> WindowTarget:
         """由热键任务准备步骤调用，先记录目标，再允许任何状态日志。"""
@@ -176,8 +190,9 @@ class ScreenCapture:
 
     def capture(self, target: WindowTarget) -> CapturedImage:
         """只截预先记录的窗口矩形；目标变化时拒绝，不退回全屏。"""
+        from contextlib import nullcontext
         try:
-            with self._windows.physical_coordinates():
+            with self._windows.physical_coordinates(), (self.capture_guard(target) if self.capture_guard else nullcontext()):
                 self._verify_target(target)
                 region = target.region
                 if region["width"] * region["height"] > MAX_CAPTURE_PIXELS:

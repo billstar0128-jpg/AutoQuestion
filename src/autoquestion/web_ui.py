@@ -49,6 +49,9 @@ class UIController:
         self.cancel = threading.Event()
         self.closing = False
         self.updater = updater
+        self.window = None
+        from .ui_preferences import UIPreferences
+        self.preferences = UIPreferences(self.store.path.with_name('ui-preferences.json'))
         self.session_secret = None
         self.secret_scope = None
         self.history = []
@@ -98,7 +101,33 @@ class UIController:
                         active_mode=self.active_mode if active else '',
                         active_protocol=self.active_protocol if active else '',
                         history=list(self.history), events=list(self.events),
-                        update=self.updater.snapshot() if self.updater else None)
+                        update=self.updater.snapshot() if self.updater else None,
+                        window=self.window.snapshot() if self.window else {'mode': 'normal', 'available': False},
+                        preferences=self.preferences.load())
+
+    def bind_window(self, window):
+        with self.lock:
+            self.window = window
+
+    def set_window_mode(self, body):
+        if not isinstance(body, dict) or set(body) != {'mode'} or body['mode'] not in ('normal', 'compact'):
+            raise UIError('窗口模式无效。')
+        with self.lock:
+            if self.closing:
+                raise UIError('程序正在退出。')
+            window = self.window
+        if window is None:
+            return {'mode': 'normal', 'available': False}
+        try:
+            return window.set_mode(body['mode'])
+        except Exception:
+            raise UIError('无法切换本应用窗口，请稍后重试。') from None
+
+    def set_preferences(self, body):
+        try:
+            return self.preferences.save(body)
+        except (ValueError, OSError):
+            raise UIError('界面设置无效或无法保存，请重试。') from None
 
     def update_check(self):
         if self.updater is None or self.closing:
@@ -238,7 +267,9 @@ class UIController:
                     runner.stop()
             def run():
                 try:
-                    code = self.run_app(parsed_args=args, runtime=runtime, on_ready=ready)
+                    from contextlib import nullcontext
+                    with self.window.capture_scope() if self.window else nullcontext():
+                        code = self.run_app(parsed_args=args, runtime=runtime, on_ready=ready)
                     if code:
                         with self.lock:
                             self.error = self.error or '启动失败。请关闭旧实例，检查热键占用与配置后重试。'
@@ -435,6 +466,8 @@ class UIHandler(BaseHTTPRequestHandler):
                    '/api/update/check': self.server.controller.update_check,
                    '/api/update/download': self.server.controller.update_download,
                    '/api/update/install': self.server.controller.update_install,
+                   '/api/window/mode': lambda: self.server.controller.set_window_mode(data),
+                   '/api/preferences': lambda: self.server.controller.set_preferences(data),
                    '/api/clear': self.server.controller.clear}
         if self.path == '/api/shutdown' and not data:
             self._reply(200, {'closing': True})
@@ -449,7 +482,7 @@ class UIHandler(BaseHTTPRequestHandler):
             return
         if self.path not in actions:
             return self._reply(404, {'error': '操作不存在。'})
-        if self.path not in {'/api/config', '/api/start'} and data:
+        if self.path not in {'/api/config', '/api/start', '/api/window/mode', '/api/preferences'} and data:
             return self._reply(400, {'error': '操作参数无效。'})
         try:
             self._reply(200, actions[self.path]())

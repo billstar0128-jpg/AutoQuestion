@@ -57,7 +57,7 @@ class WebFrontendTests(unittest.TestCase):
 
     def open_local(self):
         self.page.goto(self.server.origin + '/#session=' + self.server.token)
-        self.page.wait_for_function("() => document.querySelector('#provider').options.length === 6")
+        self.page.wait_for_function("() => document.querySelector('#provider').options.length === 5")
 
     def test_local_first_run_examples_safe_save_demo_and_stop(self):
         self.open_local()
@@ -73,7 +73,7 @@ class WebFrontendTests(unittest.TestCase):
         self.page.locator('#view-workspace').wait_for(state='visible')
         self.assertEqual(self.page.locator('#api-key').input_value(), '')
         self.assertNotIn(SECRET, self.controller.store.path.read_text())
-        self.page.locator('#demo-button').click()
+        self.controller.start({'offline_demo': True})
         self.page.locator('#answer-result').wait_for(state='visible')
         self.assertIn('巴黎', self.page.locator('#answer-text').inner_text())
         self.assertIn('预置', self.page.locator('#answer-reason').inner_text())
@@ -84,7 +84,8 @@ class WebFrontendTests(unittest.TestCase):
         self.assertTrue(self.page.locator('#save-button').is_disabled())
         self.page.locator('.nav-link[data-view=workspace]').click()
         self.page.locator('#start-button').click()
-        self.page.wait_for_function("() => document.querySelector('#demo-button').disabled === false")
+        self.page.wait_for_function("() => document.querySelector('#start-button').textContent.includes('启动')")
+        self.page.locator('#history-toggle').click()
         self.page.locator('#clear-button').click()
         self.page.locator('#empty-result').wait_for(state='visible')
         self.assertEqual(self.errors, [])
@@ -93,7 +94,7 @@ class WebFrontendTests(unittest.TestCase):
         self.open_local()
         self.assertNotIn('session=', self.page.url)
         self.page.reload()
-        self.page.wait_for_function("() => document.querySelector('#provider').options.length === 6")
+        self.page.wait_for_function("() => document.querySelector('#provider').options.length === 5")
         self.page.set_viewport_size({'width': 390, 'height': 844})
         for name in ('settings', 'workspace', 'guide'):
             self.page.locator(f'.nav-link[data-view={name}]').click()
@@ -130,13 +131,12 @@ class WebFrontendTests(unittest.TestCase):
         try:
             self.page.on('request', lambda request: requests.append(request.url))
             self.page.goto(f'http://127.0.0.1:{files.server_port}/preview/')
-            self.page.wait_for_function("() => document.querySelector('#provider').options.length === 6")
+            self.page.wait_for_function("() => document.querySelector('#provider').options.length === 5")
             self.assertTrue(self.page.locator('#preview-banner').is_visible())
             self.page.locator('.nav-link[data-view=settings]').click()
             self.assertTrue(self.page.locator('#api-key').is_disabled())
             self.page.locator('.nav-link[data-view=workspace]').click()
-            self.page.locator('#demo-button').click()
-            self.page.locator('#answer-result').wait_for(state='visible')
+            self.assertEqual(self.page.get_by_role('button', name='先试试离线 Demo').count(), 0)
             self.assertFalse(any('/api/' in url for url in requests))
             self.assertFalse(self.controller.store.path.exists())
             self.assertEqual(self.errors, [])
@@ -260,6 +260,11 @@ class WebFrontendTests(unittest.TestCase):
         updater = Updater()
         self.controller.updater = updater
         self.open_local()
+        self.page.wait_for_function("() => document.querySelector('#update-title').textContent.includes('0.6.0')")
+        self.page.locator('.nav-link[data-view=workspace]').click()
+        self.assertFalse(self.page.locator('#update-panel').is_visible())
+        self.assertTrue(self.page.locator('#update-indicator').is_visible())
+        self.page.locator('.nav-link[data-view=settings]').click()
         self.page.locator('#update-download').wait_for(state='visible')
         self.assertEqual(updater.checks, 1)
         self.assertIn('0.6.0', self.page.locator('#update-title').inner_text())
@@ -288,6 +293,84 @@ class WebFrontendTests(unittest.TestCase):
         self.assertEqual(self.page.locator('#answer-text').inner_text(), data['answer']['answer_text'])
         self.assertEqual(self.page.locator('.clipboard-fallback').count(), 0)
         self.assertEqual(self.errors, [])
+
+    def test_workspace_is_focused_and_history_collapses_with_settings_reachable(self):
+        self.open_local()
+        self.page.locator('.nav-link[data-view=workspace]').click()
+        workspace = self.page.locator('#view-workspace')
+        self.assertFalse(workspace.get_by_role('button', name='先试试离线 Demo').count())
+        self.assertFalse(self.page.locator('#pair-button').is_visible())
+        self.assertFalse(self.page.locator('#provider-name').is_visible())
+        self.assertFalse(self.page.locator('#update-panel').is_visible())
+        self.assertFalse(self.page.locator('#history-list').is_visible())
+        self.page.locator('#history-toggle').click()
+        self.assertTrue(self.page.locator('#history-list').is_visible())
+        self.page.locator('.nav-link[data-view=settings]').click()
+        self.assertTrue(self.page.locator('#provider-name').is_visible())
+        self.assertTrue(self.page.locator('#pair-button').is_visible())
+        self.assertNotIn('offline_demo', self.page.locator('#provider option').evaluate_all('(items)=>items.map(x=>x.value)'))
+        self.assertEqual(self.errors, [])
+
+    def test_theme_selection_persists_and_narrow_views_remain_readable(self):
+        self.open_local()
+        for theme in ('dark', 'light'):
+            with self.page.expect_response('**/api/preferences'):
+                self.page.locator('#theme-select').select_option(theme)
+            self.assertEqual(self.page.locator('html').get_attribute('data-theme'), theme)
+            self.page.reload()
+            self.page.wait_for_function("() => document.querySelector('#provider').options.length > 0")
+            self.assertEqual(self.page.locator('#theme-select').input_value(), theme)
+            self.page.set_viewport_size({'width': 360, 'height': 640})
+            for name in ('workspace', 'settings', 'guide'):
+                self.page.locator(f'.nav-link[data-view={name}]').click()
+                self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
+        self.assertEqual(self.page.evaluate('Object.keys(localStorage)'), [])
+        self.assertEqual(self.errors, [])
+
+    def test_compact_native_box_expands_existing_answer_without_starting_or_losing_copy(self):
+        from test_subjective_answering import subjective_payload
+        data = subjective_payload()
+        with self.controller.lock:
+            self.controller.history = [dict(question=data['question'], answer=data['answer'], time='test')]
+        native = {'mode': 'normal', 'available': True}
+        calls = []
+        def native_state(route):
+            response = route.fetch()
+            payload = response.json()
+            payload['window'] = native.copy()
+            route.fulfill(response=response, json=payload)
+        def change_mode(route):
+            self.assertEqual(route.request.headers.get('x-autoquestion-token'), self.server.token)
+            body = route.request.post_data_json
+            calls.append(body)
+            native['mode'] = body['mode']
+            route.fulfill(json=native)
+        self.page.route('**/api/state', native_state)
+        self.page.route('**/api/window/mode', change_mode)
+        self.open_local()
+        self.page.locator('#compact-button').click()
+        self.page.wait_for_function("() => document.body.classList.contains('native-compact')")
+        self.page.set_viewport_size({'width': 80, 'height': 80})
+        self.assertTrue(self.page.locator('#compact-expand').is_visible())
+        self.assertFalse(self.page.locator('#question-text').is_visible())
+        self.assertFalse(self.page.locator('#api-key').is_visible())
+        self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight'))
+        self.page.locator('#compact-expand').click()
+        self.page.set_viewport_size({'width': 440, 'height': 640})
+        self.page.locator('#view-workspace').wait_for(state='visible')
+        self.assertEqual(self.page.locator('#answer-text').inner_text(), data['answer']['answer_text'])
+        self.assertEqual(self.page.locator('#answer-reason').inner_text(), data['answer']['short_reason'])
+        self.assertTrue(self.page.locator('#copy-answer').is_enabled())
+        self.assertFalse(self.controller.state()['active'])
+        self.assertEqual(calls, [{'mode': 'compact'}, {'mode': 'normal'}])
+        self.assertEqual(self.errors, [])
+
+    def test_browser_workspace_does_not_offer_native_floating_mode(self):
+        self.open_local()
+        self.page.locator('.nav-link[data-view=workspace]').click()
+        self.assertFalse(self.page.locator('#compact-button').is_visible())
+        self.assertFalse(self.page.locator('#compact-expand').is_visible())
+        self.assertFalse(self.page.locator('body').evaluate("el=>el.classList.contains('native-compact')"))
 
 
 if __name__ == '__main__':

@@ -33,7 +33,7 @@ class Window:
     native = None
     def __init__(self):
         from types import SimpleNamespace
-        self.events = SimpleNamespace(closing=Event(), closed=Event())
+        self.events = SimpleNamespace(closing=Event(), closed=Event(), loaded=Event())
     def destroy(self):
         self.events.closing.emit()
         self.events.closed.emit()

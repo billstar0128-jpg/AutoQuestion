@@ -30,3 +30,5 @@ AUTO 默认不打开浏览器；WPS、PDF 阅读器、记事本和其他桌面�
 控制台显示题干、答案与状态；终端自己的日志、屏幕录制和复制操作不受 AutoQuestion 管理。`--show-config` 显示非秘密配置；URL 中的用户信息、查询参数和片段被验证拒绝，避免 query secret 回显。Doctor 只读取凭据元数据，不解码 CredentialBlob。
 
 配置重置使用 `main.py --reset-config`；删除所有本项目凭据需要另行确认，默认保留。详见 [Advanced Configuration](docs/CONFIGURATION.md) 和 [Security](SECURITY.md)。
+
+0.6.0 Windows 的主题选择写入独立的 `ui-preferences.json`，只包含非秘密显示偏好，不加入 Key/模型配置。小方框与展开窗口共用原有内存结果，点击 AQ 仅显示已取得的答案，不自动截屏或增加模型请求。为避免 App 遮挡题目，原生会话捕获时仅排除或短暂隐藏本进程的 App 窗口，捕获后恢复且不激活；不会为了避让而隐藏其他应用，也不额外读取与本次题目目标无关的窗口。

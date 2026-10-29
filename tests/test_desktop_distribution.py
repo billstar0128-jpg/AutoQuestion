@@ -30,6 +30,14 @@ class DesktopDistributionTests(unittest.TestCase):
             self.assertTrue((output / 'preview/index.html').is_file())
             self.assertFalse((output / 'windows').exists())
 
+    def test_windows_only_release_keeps_existing_android_download(self):
+        with TemporaryDirectory() as directory, patch('build_web_preview.__version__', '0.6.0'):
+            output = build(Path(directory))
+            html = (output / 'index.html').read_text(encoding='utf-8')
+            self.assertIn('AutoQuestion-0.6.0-Windows-x64.zip', html)
+            self.assertIn('releases/download/v0.5.0/AutoQuestion-0.5.0-Android.apk', html)
+            self.assertNotIn('AutoQuestion-0.6.0-Android.apk', html)
+
 
 if __name__ == '__main__':
     unittest.main()

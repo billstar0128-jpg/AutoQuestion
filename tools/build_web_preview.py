@@ -7,13 +7,14 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 from autoquestion.provider_presets import public_presets
-from autoquestion import __version__
+from autoquestion import __version__, ANDROID_RELEASE_VERSION
 
 
 def build(destination=None):
     destination = ROOT / 'dist/site' if destination is None else Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
-    (destination / 'index.html').write_text((ROOT / 'src/autoquestion/web/download.html').read_text(encoding='utf-8').replace('@@VERSION@@', __version__), encoding='utf-8')
+    (destination / 'index.html').write_text((ROOT / 'src/autoquestion/web/download.html').read_text(encoding='utf-8')
+        .replace('@@VERSION@@', __version__).replace('@@ANDROID_VERSION@@', ANDROID_RELEASE_VERSION), encoding='utf-8')
     shutil.copyfile(ROOT / 'src/autoquestion/web/download.css', destination / 'download.css')
     shutil.copyfile(ROOT / 'examples/browser_dom/mixed_questions.html', destination / 'try-questions.html')
     shutil.copyfile(ROOT / 'examples/browser_dom/mixed_subjective.html', destination / 'try-subjective.html')

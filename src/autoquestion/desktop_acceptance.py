@@ -44,7 +44,8 @@ def run(report_path):
                 try:
                     stage = 'native WebView2 first-run UI'
                     assert window.events.loaded.wait(20)
-                    until(lambda: window.evaluate_js("document.querySelector('#provider').options.length === 6 && !document.querySelector('#api-key').disabled"))
+                    until(lambda: window.evaluate_js("document.querySelector('#provider').options.length === 5 && !document.querySelector('#api-key').disabled"))
+                    assert window.evaluate_js("document.querySelector('#demo-button') === null")
                     window.evaluate_js("document.querySelector('#model').value='deepseek-flash'; document.querySelector('#vision').checked=true; document.querySelector('#api-key').value='test-native-window-key'; document.querySelector('#save-button').click();")
                     stage = 'native configuration and secure save'
                     until(lambda: store.path.exists())
@@ -54,7 +55,19 @@ def run(report_path):
                     assert 'test-native-window-key' not in store.path.read_text()
                     until(lambda: window.evaluate_js("!document.querySelector('#view-workspace').hidden"))
                     assert window.evaluate_js("document.querySelector('#api-key').value === ''")
-                    window.evaluate_js("document.querySelector('#demo-button').click()")
+                    until(lambda: controller.state()['window']['available'])
+                    stage = 'native light and dark preferences'
+                    for theme in ('dark', 'light'):
+                        until(lambda: window.evaluate_js('!pending'))
+                        window.evaluate_js("document.querySelector('#theme-select').value=" + json.dumps(theme)
+                                           + "; document.querySelector('#theme-select').dispatchEvent(new Event('change', {bubbles:true}));")
+                        until(lambda: controller.state()['preferences']['theme'] == theme)
+                        until(lambda: window.evaluate_js('document.documentElement.dataset.theme === ' + json.dumps(theme)))
+                        assert json.loads(controller.preferences.path.read_text(encoding='utf-8')) == {'theme': theme}
+                        from .ui_preferences import UIPreferences
+                        assert UIPreferences(controller.preferences.path).load() == {'theme': theme}
+                    # Exercise the explicit test-only Fake path; the real UI must not regain a Demo invitation.
+                    controller.start({'offline_demo': True})
                     stage = 'real native F8 Fake answer'
                     until(lambda: native and controller.state()['status'] == 'READY')
                     post = ctypes.WinDLL('user32', use_last_error=True).PostThreadMessageW
@@ -64,13 +77,47 @@ def run(report_path):
                     until(lambda: controller.state()['history'] and controller.state()['status'] == 'READY')
                     assert controller.state()['history'][0]['answer']['selected_text'] == '巴黎'
                     until(lambda: window.evaluate_js("document.querySelector('#answer-text').textContent.includes('巴黎')"))
+                    record = controller.state()['history'][0]
+                    displayed = window.evaluate_js("Object.fromEntries(['question-text','answer-text','answer-reason'].map(id => [id, document.getElementById(id).textContent]))")
+                    assert displayed['question-text'] == record['question']['question_text']
+                    assert displayed['answer-reason'] == record['answer']['short_reason']
+                    assert displayed['answer-reason']
+                    stage = 'native 80 square and answer restoration'
+                    original_bounds = controller.window.backend.geometry()
+                    until(lambda: window.evaluate_js('!pending'))
+                    window.evaluate_js("document.querySelector('#compact-button').click()")
+                    until(lambda: controller.state()['window']['mode'] == 'compact')
+                    until(lambda: window.evaluate_js("document.body.classList.contains('native-compact')"))
+                    assert controller.window.backend.geometry()[2:] == (80, 80)
+                    assert window.evaluate_js("!document.querySelector('#compact-expand').hidden && document.querySelector('#normal-shell').hidden")
+                    until(lambda: window.evaluate_js('!pending'))
+                    window.evaluate_js("document.querySelector('#compact-expand').click()")
+                    until(lambda: controller.state()['window']['mode'] == 'normal')
+                    until(lambda: window.evaluate_js("!document.body.classList.contains('native-compact') && !document.querySelector('#view-workspace').hidden"))
+                    assert controller.window.backend.geometry() == original_bounds
+                    assert displayed == window.evaluate_js("Object.fromEntries(['question-text','answer-text','answer-reason'].map(id => [id, document.getElementById(id).textContent]))")
+                    assert window.evaluate_js("!document.querySelector('#copy-answer').disabled")
+                    # Check actual DOM selection without reading or overwriting the user's system clipboard.
+                    for field, text in displayed.items():
+                        selection = window.evaluate_js("(() => { const element=document.getElementById(" + json.dumps(field)
+                                                       + "); if(getComputedStyle(element).userSelect==='none') return null;"
+                                                       + "const range=document.createRange();range.selectNodeContents(element);"
+                                                       + "const selected=getSelection();selected.removeAllRanges();selected.addRange(range);return selected.toString(); })()")
+                        assert selection == text
+                    window.evaluate_js('getSelection().removeAllRanges()')
                     stage = 'second process activates existing window'
+                    until(lambda: window.evaluate_js('!pending'))
+                    window.evaluate_js("document.querySelector('#compact-button').click()")
+                    until(lambda: controller.state()['window']['mode'] == 'compact')
                     env = dict(os.environ, APPDATA=str(profile))
                     command = [sys.executable] if getattr(sys, 'frozen', False) else [sys.executable, str(Path(__file__).resolve().parents[2] / 'tools/desktop_entry.py')]
                     duplicate = subprocess.run(command, env=env, cwd=directory, timeout=15,
                                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                                creationflags=subprocess.CREATE_NO_WINDOW)
                     assert duplicate.returncode == 0
+                    until(lambda: controller.state()['window']['mode'] == 'normal')
+                    until(lambda: window.evaluate_js("!document.body.classList.contains('native-compact')"))
+                    assert displayed == window.evaluate_js("Object.fromEntries(['question-text','answer-text','answer-reason'].map(id => [id, document.getElementById(id).textContent]))")
                     assert controller.state()['active'] and controller.state()['status'] == 'READY'
                     assert len(native) == 1
                     stage = 'native title-bar close'
@@ -99,7 +146,10 @@ def run(report_path):
                 raise RuntimeError('HTTP server remained online')
             result = dict(passed=True, version=__version__,
                           checks=['native WebView2 window', 'first-run secure Key save',
-                                  'own F8 message / Fake answer', 'duplicate process reuses window',
+                                  'light and dark preferences persist through the authenticated UI',
+                                  'own F8 message / test-only Fake answer', 'native 80x80 compact and geometry restoration',
+                                  'question, answer and reason preserved and selectable; copy action remains available',
+                                  'duplicate process expands and reuses window',
                                   'title-bar close exits GUI and HTTP service', 'F8 / ESC released'],
                           paid_requests=0, private_screenshots=0)
     except Exception as error:

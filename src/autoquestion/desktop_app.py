@@ -39,8 +39,15 @@ def main(*, store=None, controller=None, webview_module=None, test_driver=None, 
             window = None
             try:
                 window = webview_module.create_window('AutoQuestion', server.origin + '/#session=' + server.token,
-                                                     width=1280, height=900, min_size=(980, 680),
-                                                     text_select=True, confirm_close=False)
+                                                     width=440, height=640, min_size=(320, 360),
+                                                     easy_drag=False, text_select=True, confirm_close=False)
+                from .desktop_window import DesktopWindow
+                owned_window = DesktopWindow()
+                controller.bind_window(owned_window)
+                def native_loaded():
+                    if window.native is not None:
+                        owned_window.bind(window.native)
+                window.events.loaded += native_loaded
                 window.events.closing += controller.begin_close
                 window.events.closed += controller.begin_close
                 if update_receipt is not None:
@@ -48,6 +55,7 @@ def main(*, store=None, controller=None, webview_module=None, test_driver=None, 
                     window.events.loaded += lambda: notify_ready(update_receipt)
                 server.exit_callback = window.destroy
                 def focus():
+                    owned_window.set_mode('normal')
                     window.restore()
                     window.show()
                     native = window.native

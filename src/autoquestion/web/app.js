@@ -14,7 +14,7 @@ const preview =
   !token && (!loopback || location.pathname.includes("/preview/"));
 const locked = !token && !preview;
 const appDownload =
-  "https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.5.0/AutoQuestion-0.5.0-Windows-x64.zip";
+  "https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.6.0/AutoQuestion-0.6.0-Windows-x64.zip";
 let providers = [];
 let state = {
   config: null,
@@ -100,16 +100,11 @@ function selectedProvider() {
 function examples(reset = false) {
   const provider = selectedProvider();
   if (!provider) return;
-  const offline = provider.id === "offline_demo";
-  $("api-fields").hidden = offline;
-  $("base-url").required = $("model").required = !offline && !preview;
-  $("offline-note").hidden = !offline;
-  $("example-provider").textContent = offline
-    ? "无需配置，直接体验"
-    : `拿 ${provider.name.split(" / ")[0]} 举个例子`;
+  $("base-url").required = $("model").required = !preview;
+  $("example-provider").textContent = `拿 ${provider.name.split(" / ")[0]} 举个例子`;
   $("example-url").textContent =
     provider.base_url || "http://127.0.0.1:8000/v1";
-  $("use-url").disabled = offline || state.active;
+  $("use-url").disabled = state.active;
   $("example-models").replaceChildren();
   $("model-options").replaceChildren();
   provider.models.forEach((model) => {
@@ -130,12 +125,10 @@ function examples(reset = false) {
       node(
         "span",
         "field-help",
-        offline ? "固定离线示例" : "请填写服务商提供的模型 ID",
+        "请填写服务商提供的模型 ID",
       ),
     );
-  $("vision-notes").textContent = offline
-    ? provider.notes
-    : provider.vision_notes;
+  $("vision-notes").textContent = provider.vision_notes;
   $("provider-docs").hidden = !provider.docs_url;
   $("provider-docs").href = provider.docs_url || "#";
   if (reset) {
@@ -309,8 +302,51 @@ function showResult(result) {
   $("answer-confidence").textContent =
     `模型给出的置信度 ${Math.round(answer.confidence * 100)}% · 不代表实际正确率`;
 }
+let theme = "system";
+const darkMedia = matchMedia("(prefers-color-scheme: dark)");
+function applyTheme(value) {
+  theme = ["system", "light", "dark"].includes(value) ? value : "system";
+  document.documentElement.dataset.theme = theme === "system" ? (darkMedia.matches ? "dark" : "light") : theme;
+  $("theme-select").value = theme;
+}
+darkMedia.addEventListener("change", () => { if (theme === "system") applyTheme(theme); });
+if (preview) {
+  try { theme = localStorage.getItem("aq-theme") || "system"; } catch (_) { /* A blocked store does not prevent using the UI. */ }
+}
+applyTheme(theme);
+$("theme-select").addEventListener("change", () => {
+  const chosen = $("theme-select").value;
+  applyTheme(chosen);
+  if (preview) {
+    try { localStorage.setItem("aq-theme", chosen); } catch (_) { /* Selection still works for this page. */ }
+  } else if (!locked) {
+    action(async () => {
+      const saved = await api("/api/preferences", { theme: chosen });
+      state.preferences = saved;
+      applyTheme(state.preferences.theme);
+    });
+  }
+});
+function renderWindow() {
+  const native = !preview && !locked && state.window?.available === true;
+  const compact = native && state.window.mode === "compact";
+  document.body.classList.toggle("native-compact", compact);
+  $("compact-box").hidden = !compact;
+  $("normal-shell").hidden = compact;
+  $("compact-button").hidden = !native;
+  $("compact-status").className = state.error ? "error" : state.active ? state.status === "READY" ? "running" : "busy" : "";
+}
+async function windowMode(mode) {
+  if (!state.window?.available || preview || locked) return;
+  if (mode === "normal") view("workspace");
+  state.window = await api("/api/window/mode", { mode });
+  renderWindow();
+}
+$("compact-button").addEventListener("click", () => action(() => windowMode("compact")));
+$("compact-expand").addEventListener("click", () => action(() => windowMode("normal")));
 function renderUpdate() {
   const update = state.update;
+  $("update-indicator").hidden = !update?.available || preview;
   $("update-panel").hidden = !update || preview;
   if (!update) return;
   $("update-title").textContent = update.available
@@ -346,6 +382,8 @@ document.addEventListener("visibilitychange", () => {
 });
 function render() {
   renderUpdate();
+  renderWindow();
+  applyTheme(state.preferences?.theme || theme);
   const config = state.config;
   const offline =
     (state.active_protocol || config?.protocol_provider) === "fake";
@@ -372,7 +410,7 @@ function render() {
     "busy",
     state.active && state.status !== "READY",
   );
-  $("version").textContent = "v" + (state.version || "0.5.0");
+  $("version").textContent = "v" + (state.version || "0.6.0");
   $("start-button").textContent = preview
     ? "下载 App 后开始 →"
     : state.active
@@ -382,7 +420,6 @@ function render() {
         : "启动答题 ↗";
   $("start-button").disabled =
     state.status === "STOPPING" || state.status === "STARTING";
-  $("demo-button").disabled = state.active;
   $("provider-name").textContent =
     state.active_profile ||
     providers.find((provider) => provider.id === config?.provider_profile)
@@ -392,7 +429,7 @@ function render() {
     state.active_profile || config ? $("provider-name").textContent[0] : "◇";
   $("provider-model").textContent = offline
     ? "预置示例 · 无 API 请求"
-    : config?.model || "也可以先体验离线 Demo";
+    : config?.model || "填写模型后即可开始";
   $("input-mode").textContent = (
     state.active_mode ||
     config?.input_mode ||
@@ -464,8 +501,7 @@ function render() {
       ? "预览模式不保存设置，也不接收 API Key。"
       : "设置只在本机生效。";
   $("pair-button").disabled = preview || !state.bridge_available;
-  $("use-url").disabled =
-    state.active || selectedProvider()?.id === "offline_demo";
+  $("use-url").disabled = state.active;
   document.querySelectorAll("#example-models button").forEach((button) => {
     button.disabled = state.active;
   });
@@ -492,60 +528,6 @@ async function refresh() {
   state = next;
   render();
 }
-const demoResult = {
-  time: "示例",
-  offline: true,
-  question: {
-    question_text: "法国的首都是哪里？",
-    question_type: "single_choice",
-    source_type: "MANUAL",
-    options: ["巴黎", "伦敦", "柏林", "罗马"].map((text, index) => ({
-      text,
-      index,
-      label: "ABCD"[index],
-    })),
-  },
-  answer: {
-    question_type: "single_choice",
-    selected_index: 0,
-    selected_label: "A",
-    selected_text: "巴黎",
-    selected_indices: [],
-    selected_labels: [],
-    selected_texts: [],
-    confidence: 0.99,
-    short_reason: "离线预置演示答案，不代表模型推理。",
-  },
-};
-function previewDemo() {
-  state.active = true;
-  state.active_protocol = "fake";
-  state.active_mode = "demo";
-  state.active_profile = "Offline Demo";
-  state.status = "ANALYZING";
-  view("workspace");
-  render();
-  setTimeout(() => {
-    if (!state.active) return;
-    state.history.unshift(structuredClone(demoResult));
-    state.status = "READY";
-    selectedResult = 0;
-    render();
-  }, 700);
-}
-$("demo-button").addEventListener("click", () =>
-  action(async () => {
-    if (preview) {
-      previewDemo();
-      return;
-    }
-    await api("/api/start", { offline_demo: true });
-    selectedResult = 0;
-    view("workspace");
-    await refresh();
-    toast("离线 Demo 已启动。按 F8 体验预置答案；不会改变你保存的模型配置。");
-  }),
-);
 $("start-button").addEventListener("click", () =>
   action(async () => {
     if (preview) {
@@ -655,7 +637,6 @@ async function initialize() {
         "这个标签没有本机会话。请双击 AutoQuestion.exe 重新打开，便可正常配置。";
       $("connection-label").textContent = "需要从 App 打开";
       $("start-button").disabled =
-        $("demo-button").disabled =
         $("pair-button").disabled =
           true;
       $("exit-button").hidden = true;
@@ -674,6 +655,7 @@ async function initialize() {
       providers = (await api("/api/providers")).providers;
       state = await api("/api/state");
     }
+    providers = providers.filter((provider) => provider.id !== "offline_demo");
     providers.forEach((provider) => {
       const option = node("option", "", provider.name);
       option.value = provider.id;
