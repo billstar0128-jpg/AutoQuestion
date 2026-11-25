@@ -6,7 +6,7 @@
 
 完整解压 ZIP → 双击 AutoQuestion.exe，无需安装 Python；保留 `_internal` 文件夹。GitHub 的 **Code → Download ZIP 是源码**，普通使用请点上面的程序包。
 
-[手机 Android 0.5.0 APK](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.5.0/AutoQuestion-0.5.0-Android.apk) · [使用说明](docs/WEB_UI.md)
+[手机 Android 0.6.1 APK](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.6.1/AutoQuestion-0.6.1-Android.apk) · [Android 使用说明](docs/ANDROID.md)
 
 **题目在屏幕上，F8 一按，答案出来。**
 
@@ -18,13 +18,13 @@
 
 **0.1.0rc1 还是第一个公开 Release Candidate。** 如果你愿意测试，遇到难装、难懂、识别失败或者任何反直觉的地方，Issue 比“能跑”更有价值。
 
-当前 Windows 版本为 **0.6.0**：工作台可收成约 80×80 的 AQ 方框，点击展开答案和解题说明，保留选择与复制；支持日间、深色主题。配置、配对和更新放在“模型与配置”，操作说明放在“开始使用”，工作台不再邀请体验离线 Demo。手机继续使用 **0.5.0**，本轮不变更手机功能。上面的介绍保留首次公开 RC 的背景。
+当前 Windows 版本为 **0.6.0**。工作台可收成约 80×80 的 AQ 方框，点击展开答案和解题说明，保留选择与复制，并支持日间、深色主题。配置、配对和更新放在“模型与配置”，操作说明放在“开始使用”，工作台不再邀请体验离线 Demo。上面的介绍保留首次公开 RC 的背景。
 
 **电脑：[下载 Windows App](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.6.0/AutoQuestion-0.6.0-Windows-x64.zip) → 完整解压 → 双击 AutoQuestion.exe。** 不需要 Python 或 PowerShell。在 App 的独立窗口中配置模型和 API Key，保存后启动答题。请保留 _internal 文件夹。详见 [App 使用说明](docs/WEB_UI.md)。[网站首页](https://billstar0128-jpg.github.io/AutoQuestion/) 是下载入口，配置在本机 App 内完成。
 
-**手机：[下载 Android APK](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.5.0/AutoQuestion-0.5.0-Android.apk)**，适用 Android 8.0 及以上。安装后配置支持图片的模型，允许悬浮窗并通过系统屏幕共享授权，点击小方框识题。截图只在内存中处理，不写入相册。安装、操作和小米权限说明见 [Android 使用说明](docs/ANDROID.md)。
+**手机：[下载 Android 0.6.1 APK](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.6.1/AutoQuestion-0.6.1-Android.apk)**，适用 Android 8.0 及以上。配置支持图片的模型并允许悬浮窗后，轻点 AQ 并确认系统屏幕共享即可识题。Android 11 及以上可选择开启录屏兼容，边录屏边识题。截图只在内存中处理。安装、操作和小米权限说明见 [Android 使用说明](docs/ANDROID.md)。
 
-0.4.0 及更早版本没有更新模块，需要先手动安装本次新包。Android 使用同签名 APK 覆盖安装，不用卸载；Windows 完整解压新包后运行，用户配置保存在 AppData，不随便携目录替换而删除。
+已装 Android 0.5.0 的用户打开主界面即可自动检查 0.6.1，也可手动点“检查更新”。下载后点“安装已下载更新”，再由系统确认覆盖安装。0.4.0 及更早版本可直接下载 APK 覆盖安装，保留已有配置和 Key。Windows 手动更新时完整解压新包后运行，AppData 中的配置会保留。
 
 ## What it does
 
@@ -349,7 +349,7 @@ Native Anthropic / Claude API **not supported in 0.6.0**。通过兼容网关调
 
 Vision 一张图片一次请求，按屏幕阅读顺序返回各题；DOM 按可靠题组分别请求并校验，整批完成后显示。单次最多 10 道，不自动滚动；Vision 跳过残缺或不可读的题，DOM 无法确定完整题组时拒绝提取或由 AUTO 回退 Vision。主观 DOM 需要明确题型和题组语义；不读取输入框里已经填写的答案。界面显示识别题干、参考答案和简短理由，请核对是否漏题。无字母选项不会生成 A/B/C/D。主观题结构校验只能检查字段和空数，不能证明知识或推导正确。
 
-不支持独立 OCR、原生 Anthropic、个人浏览器调试端口接管、自动点击/勾选/提交/下一题。扩展只读用户授权页面的当前可见语义题组；跨域 iframe、封闭 Shadow DOM、自绘控件、歧义题组可能需要 Vision。没有数据库、遥测或云账户。不宣称支持所有网站、所有 AI 模型或 100% accurate。Windows 0.6.0 与 Android 0.5.0 提供便携 EXE、APK 与源码，不提供 MSI、iOS、PyPI 或独立 wheel 分发。Android 只使用 Vision；系统禁止捕获的页面可能黑屏，不能绕过。
+不支持独立 OCR、原生 Anthropic、个人浏览器调试端口接管、自动点击/勾选/提交/下一题。扩展只读用户授权页面的当前可见语义题组；跨域 iframe、封闭 Shadow DOM、自绘控件、歧义题组可能需要 Vision。没有数据库、遥测或云账户。不宣称支持所有网站、所有 AI 模型或 100% accurate。Windows 0.6.0 与 Android 0.6.1 提供便携 EXE、APK 与源码，不提供 MSI、iOS、PyPI 或独立 wheel 分发。Android 只使用 Vision；系统禁止捕获的页面可能黑屏，不能绕过。
 
 ## Privacy and Security
 
@@ -390,7 +390,7 @@ Key 不进入普通 config、日志、repr 或仓库。不要上传真实 `.env`
 
 AutoQuestion 使用 **Apache License 2.0（Apache-2.0）**，完整条款见 [LICENSE](LICENSE)。
 
-**Windows 0.6.0 · Android 0.5.0 · 源码。** 历史标签保持不变。Chrome / Edge Browser DOM 有自动测试和本地合成页面测试覆盖；不代表所有真实网页均已人工验证。Android 尚未在用户的小米真机验收，权限与后台策略请按使用说明检查。
+**Windows 0.6.0 · Android 0.6.1 · 源码。** 历史标签保持不变。Chrome / Edge Browser DOM 有自动测试和本地合成页面测试覆盖；不代表所有真实网页均已人工验证。Android 尚未在用户的小米真机验收，权限与后台策略请按使用说明检查。
 
 [问题反馈](https://github.com/billstar0128-jpg/AutoQuestion/issues) · [Actions](https://github.com/billstar0128-jpg/AutoQuestion/actions/workflows/ci.yml) · [安全报告](https://github.com/billstar0128-jpg/AutoQuestion/security/advisories/new)
 

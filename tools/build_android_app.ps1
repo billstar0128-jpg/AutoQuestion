@@ -56,6 +56,18 @@ try {
 
     if ($UpdateTestFixtures) {
         if ($Release) { throw 'Generate disposable debug update fixtures separately from a release build.' }
+        $fixtureConfig = Get-Content -LiteralPath (Join-Path $projectRoot 'android\app\build.gradle') -Raw
+        $codePattern = [regex]'(?m)^([ \t]*versionCode[ \t]+)([0-9]+)(?=[ \t]*\r?$)'
+        $namePattern = [regex]"(?m)^([ \t]*versionName[ \t]+)'([0-9]+\.[0-9]+\.[0-9]+)'(?=[ \t]*\r?$)"
+        $codeMatch = $codePattern.Match($fixtureConfig)
+        $nameMatch = $namePattern.Match($fixtureConfig)
+        if (-not $codeMatch.Success -or -not $nameMatch.Success) { throw 'Expected a numeric versionCode and a major.minor.patch versionName in the Android build file.' }
+        $baseVersion = [version]$nameMatch.Groups[2].Value
+        $nextVersion = '{0}.{1}.{2}' -f $baseVersion.Major, $baseVersion.Minor, ($baseVersion.Build + 1)
+        $nextCode = [int]$codeMatch.Groups[2].Value + 1
+        $fixtureConfig = $codePattern.Replace($fixtureConfig, $codeMatch.Groups[1].Value + $nextCode, 1)
+        $fixtureConfig = $namePattern.Replace($fixtureConfig, $nameMatch.Groups[1].Value + "'$nextVersion'", 1)
+
         # These APKs stay ignored, use only disposable test signing keys, and never ship in the app.
         $fixtures = Join-Path $projectRoot 'build\android-update-fixtures'
         $fixtureSource = Join-Path $fixtures 'source'
@@ -76,9 +88,6 @@ try {
             Copy-Item -LiteralPath (Join-Path $projectRoot "android\app\src\$sourceSet") `
                 -Destination (Join-Path $fixtureAndroid 'app\src') -Recurse
         }
-        $fixtureConfig = Get-Content -LiteralPath (Join-Path $projectRoot 'android\app\build.gradle') -Raw
-        if ($fixtureConfig -notmatch "versionName '0\.5\.0'") { throw 'Update the synthetic next-version fixtures before testing a different app version.' }
-        $fixtureConfig = $fixtureConfig.Replace('versionCode 500', 'versionCode 600').Replace("versionName '0.5.0'", "versionName '0.6.0'")
         $fixtureConfig = $fixtureConfig.Replace("applicationId 'com.autoquestion.mobile'", "applicationId (findProperty('fixtureId') ?: 'com.autoquestion.mobile')")
         [IO.File]::WriteAllText((Join-Path $fixtureAndroid 'app\build.gradle'), $fixtureConfig, [Text.UTF8Encoding]::new($false))
         & $gradleExe -p $fixtureAndroid --no-daemon --console=plain assembleDebug
@@ -100,6 +109,8 @@ try {
         & $gradleExe -p $fixtureAndroid --no-daemon --console=plain '-PfixtureId=com.autoquestion.malicious' assembleDebug
         if ($LASTEXITCODE -ne 0) { throw 'Could not create the wrong-package negative-test fixture.' }
         Copy-Item -LiteralPath $fixtureApk -Destination (Join-Path $fixtureAssets 'update-wrong-package.apk') -Force
+        @("baseVersion=$baseVersion", "fixtureVersion=$nextVersion") |
+            Set-Content -LiteralPath (Join-Path $fixtureAssets 'update-versions.properties') -Encoding ASCII
         Write-Output "Disposable update test APKs: $fixtureAssets"
     }
 

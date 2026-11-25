@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <bool name="recording_compatibility_available">false</bool>
+    <string name="recording_access_label">AutoQuestion 录屏兼容</string>
+    <string name="recording_access_description">只在你轻点悬浮按钮 AQ 时读取一帧屏幕，用于发送给你配置的模型。可以在系统录屏期间使用，不读取界面控件，也不代替你操作手机。</string>
+</resources>

@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.security.cert.Certificate;
 import java.util.ArrayDeque;
+import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -36,18 +37,30 @@ import javax.net.ssl.HttpsURLConnection;
  */
 @SuppressWarnings("deprecation")
 public final class UpdateSmokeTest extends InstrumentationTestCase {
-    private static final String VERSION = "0.6.0";
-    private static final String NAME = "AutoQuestion-" + VERSION + "-Android.apk";
-    private static final String APK_URL = "https://github.com/" + UpdatePolicy.REPOSITORY + "/releases/download/v" + VERSION + "/" + NAME;
     private static final String KEY = "synthetic-update-test-key-no-account";
     private Context context;
     private UiAutomation automation;
+    private String baseVersion;
+    private String fixtureVersion;
+    private String apkName;
+    private String apkUrl;
 
     @Override protected void setUp() throws Exception {
         super.setUp();
         assertTrue("Updates must never control a personal phone", "ranchu".equals(android.os.Build.HARDWARE)
                 || "goldfish".equals(android.os.Build.HARDWARE));
         context = getInstrumentation().getTargetContext();
+        Properties versions = new Properties();
+        try (InputStream stream = getInstrumentation().getContext().getAssets().open("update-versions.properties")) {
+            versions.load(stream);
+        } catch (IOException error) {
+            throw new IOException("Generate update assets using tools/build_android_app.ps1 -UpdateTestFixtures", error);
+        }
+        baseVersion = versions.getProperty("baseVersion");
+        fixtureVersion = versions.getProperty("fixtureVersion");
+        assertTrue("The fixture version must be newer than its base version", UpdatePolicy.compare(fixtureVersion, baseVersion) > 0);
+        apkName = "AutoQuestion-" + fixtureVersion + "-Android.apk";
+        apkUrl = "https://github.com/" + UpdatePolicy.REPOSITORY + "/releases/download/v" + fixtureVersion + "/" + apkName;
         automation = getInstrumentation().getUiAutomation();
         android.accessibilityservice.AccessibilityServiceInfo info = automation.getServiceInfo();
         info.flags |= android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
@@ -59,14 +72,14 @@ public final class UpdateSmokeTest extends InstrumentationTestCase {
         AtomicInteger metadata = new AtomicInteger(), downloads = new AtomicInteger();
         UpdateHttp.Connections network = url -> {
             if (url.toString().equals(UpdatePolicy.RELEASES_URL)) { metadata.incrementAndGet(); return new Response(url, releaseJson(apk)); }
-            if (url.toString().equals(APK_URL)) { downloads.incrementAndGet(); return new Response(url, apk); }
+            if (url.toString().equals(apkUrl)) { downloads.incrementAndGet(); return new Response(url, apk); }
             throw new IOException("Unexpected test destination");
         };
         UpdateManager manager = new UpdateManager(context, state -> {}, network);
         File ready = UpdateManager.readyFile(context);
         try {
             manager.check(false); awaitIdle(manager);
-            assertEquals(VERSION, manager.state().release.version);
+            assertEquals(fixtureVersion, manager.state().release.version);
             assertEquals("Checking must not download the APK", 0, downloads.get());
             manager.check(false); SystemClock.sleep(80); assertEquals("Automatic polling must be throttled", 1, metadata.get());
             manager.check(true); awaitIdle(manager); assertEquals("Manual check bypasses the automatic cooldown", 2, metadata.get());
@@ -74,7 +87,7 @@ public final class UpdateSmokeTest extends InstrumentationTestCase {
             manager.check(true); awaitIdle(manager);
             assertTrue("A metadata recheck must retain a still-current verified APK", manager.readyToInstall());
             assertEquals("Rechecking must not redownload a current ready APK", 1, downloads.get());
-            UpdateManager.verifyPackage(context, ready, VERSION);
+            UpdateManager.verifyPackage(context, ready, fixtureVersion);
             assertEquals(apk.length, ready.length());
             try (InputStream stream = context.getContentResolver().openInputStream(UpdatePackageProvider.uri(context))) {
                 assertNotNull(stream); assertEquals(apk.length, read(stream).length);
@@ -99,10 +112,10 @@ public final class UpdateSmokeTest extends InstrumentationTestCase {
         File candidate = new File(context.getCacheDir(), "update-package-check.apk");
         try {
             copy(apk, candidate); assertPackageRejected(candidate, "0.7.0");
-            copy(asset("update-wrong-signer.apk"), candidate); assertPackageRejected(candidate, VERSION);
-            copy(asset("update-wrong-package.apk"), candidate); assertPackageRejected(candidate, VERSION);
+            copy(asset("update-wrong-signer.apk"), candidate); assertPackageRejected(candidate, fixtureVersion);
+            copy(asset("update-wrong-package.apk"), candidate); assertPackageRejected(candidate, fixtureVersion);
             try (InputStream installed = new java.io.FileInputStream(context.getApplicationInfo().sourceDir)) { copy(read(installed), candidate); }
-            assertPackageRejected(candidate, "0.5.0");
+            assertPackageRejected(candidate, baseVersion);
         } finally { candidate.delete(); }
 
         byte[] corrupt = apk.clone(); corrupt[corrupt.length - 1] ^= 1;
@@ -138,7 +151,7 @@ public final class UpdateSmokeTest extends InstrumentationTestCase {
 
         AtomicInteger foreign = new AtomicInteger();
         UpdateHttp redirected = new UpdateHttp(url -> {
-            if (!APK_URL.equals(url.toString())) { foreign.incrementAndGet(); throw new IOException("Foreign request"); }
+            if (!apkUrl.equals(url.toString())) { foreign.incrementAndGet(); throw new IOException("Foreign request"); }
             return new Response(url, new byte[0]) {
                 @Override public int getResponseCode() { return 302; }
                 @Override public String getHeaderField(String name) { return "Location".equals(name) ? "https://example.com/private.apk" : null; }
@@ -154,7 +167,7 @@ public final class UpdateSmokeTest extends InstrumentationTestCase {
         AtomicInteger checks = new AtomicInteger();
         MockHttps.install(url -> {
             if (UpdatePolicy.RELEASES_URL.equals(url.toString())) { checks.incrementAndGet(); return new Response(url, releaseJson(apk)); }
-            if (APK_URL.equals(url.toString())) return new Response(url, apk);
+            if (apkUrl.equals(url.toString())) return new Response(url, apk);
             throw new IOException("Unexpected test destination");
         });
         SecureStore store = new SecureStore(context);
@@ -163,11 +176,11 @@ public final class UpdateSmokeTest extends InstrumentationTestCase {
                 .putInt("uid", android.os.Process.myUid()).commit());
         MainActivity activity = (MainActivity) getInstrumentation().startActivitySync(new Intent(context, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK));
-        awaitView(activity, "下载 " + VERSION, 10000);
+        awaitView(activity, "下载 " + fixtureVersion, 10000);
         int initialChecks = checks.get();
         assertTrue("Activity startup must check releases", initialChecks >= 1);
         clickView(activity, "检查更新"); awaitCount(checks, initialChecks + 1);
-        awaitView(activity, "下载 " + VERSION, 5000); clickView(activity, "下载 " + VERSION);
+        awaitView(activity, "下载 " + fixtureVersion, 5000); clickView(activity, "下载 " + fixtureVersion);
         awaitView(activity, "安装已下载更新", 15000); clickView(activity, "安装已下载更新");
         if (!context.getPackageManager().canRequestPackageInstalls()) {
             assertTrue("Unknown-source permission page must be user-visible", awaitUi("Allow from this source", 10000));
@@ -183,13 +196,13 @@ public final class UpdateSmokeTest extends InstrumentationTestCase {
         assertTrue("Actual Android installation confirmation must appear", awaitUi("Do you want to update this app?", 15000));
         assertTrue("The system must retain an explicit Update action", awaitUi("Update", 5000));
         assertFalse(CaptureService.isRunning());
-        assertEquals("The app must remain at 0.5 until the user confirms", "0.5.0",
+        assertEquals("The app must remain at the base version until the user confirms", baseVersion,
                 context.getPackageManager().getPackageInfo(context.getPackageName(), 0).versionName);
         // Deliberately leave installer open. The host confirms it after this process reports OK.
     }
 
     public void testUpgradePreservesConfiguration() throws Exception {
-        assertEquals("0.6.0", context.getPackageManager().getPackageInfo(context.getPackageName(), 0).versionName);
+        assertEquals(fixtureVersion, context.getPackageManager().getPackageInfo(context.getPackageName(), 0).versionName);
         assertEquals("Installing an update must keep the application UID", android.os.Process.myUid(),
                 context.getSharedPreferences("update_smoke", Context.MODE_PRIVATE).getInt("uid", -1));
         SecureStore store = new SecureStore(context);
@@ -220,15 +233,15 @@ public final class UpdateSmokeTest extends InstrumentationTestCase {
         while (value.get() < count && SystemClock.uptimeMillis() < deadline) SystemClock.sleep(20);
         assertTrue("Expected at least " + count + " release checks", value.get() >= count);
     }
-    private static byte[] releaseJson(byte[] apk) throws IOException {
+    private byte[] releaseJson(byte[] apk) throws IOException {
         try {
-            JSONObject asset = new JSONObject().put("name", NAME).put("browser_download_url", APK_URL)
+            JSONObject asset = new JSONObject().put("name", apkName).put("browser_download_url", apkUrl)
                     .put("size", apk.length).put("state", "uploaded").put("digest", "sha256:" + sha(apk));
-            return new JSONArray().put(new JSONObject().put("tag_name", "v" + VERSION).put("draft", false)
+            return new JSONArray().put(new JSONObject().put("tag_name", "v" + fixtureVersion).put("draft", false)
                     .put("prerelease", true).put("assets", new JSONArray().put(asset))).toString().getBytes(StandardCharsets.UTF_8);
         } catch (Exception error) { throw new IOException(error); }
     }
-    private static UpdatePolicy.Asset apkAsset(byte[] apk) throws Exception { return new UpdatePolicy.Asset(NAME, APK_URL, sha(apk), apk.length); }
+    private UpdatePolicy.Asset apkAsset(byte[] apk) throws Exception { return new UpdatePolicy.Asset(apkName, apkUrl, sha(apk), apk.length); }
     private static String sha(byte[] bytes) throws Exception { return UpdateHttp.hex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes)); }
     private byte[] asset(String name) throws Exception { try (InputStream stream = getInstrumentation().getContext().getAssets().open(name)) { return read(stream); } }
     private static byte[] read(InputStream stream) throws IOException {

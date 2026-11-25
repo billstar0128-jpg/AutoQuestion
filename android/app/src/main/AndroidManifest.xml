@@ -4,6 +4,7 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <application
@@ -22,8 +23,22 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".CapturePermissionActivity" android:exported="false"
+            android:excludeFromRecents="true" android:taskAffinity="${applicationId}.capture"
+            android:theme="@style/CapturePermissionTheme" />
         <service android:name=".CaptureService" android:exported="false"
-            android:stopWithTask="true" android:foregroundServiceType="mediaProjection" />
+            android:stopWithTask="true" android:foregroundServiceType="specialUse|mediaProjection">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-started floating recognition button and its answer panel" />
+        </service>
+        <service android:name=".RecognitionScreenshotService"
+            android:enabled="@bool/recording_compatibility_available" android:exported="true"
+            android:label="@string/recording_access_label" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/recognition_screenshot_service" />
+        </service>
         <provider android:name=".UpdatePackageProvider" android:authorities="${applicationId}.updates"
             android:exported="false" android:grantUriPermissions="true" />
     </application>

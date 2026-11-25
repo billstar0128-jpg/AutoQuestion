@@ -2,5 +2,5 @@
 
 __version__ = "0.6.0"
 
-# Platform releases are independent; this desktop-only release keeps the existing APK.
-ANDROID_RELEASE_VERSION = "0.5.0"
+# Platform releases are versioned independently.
+ANDROID_RELEASE_VERSION = "0.6.1"

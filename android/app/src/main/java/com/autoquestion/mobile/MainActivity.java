@@ -8,8 +8,6 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
-import android.media.projection.MediaProjectionConfig;
-import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -25,12 +23,13 @@ import android.widget.TextView;
 
 /** One local setup screen. Home keeps the user-started overlay; Exit ends it. */
 public final class MainActivity extends Activity {
-    private static final int CAPTURE_REQUEST = 31, NOTIFICATION_REQUEST = 32;
+    private static final int NOTIFICATION_REQUEST = 32;
     private static final int INK = Color.rgb(32, 30, 48), MUTED = Color.rgb(112, 107, 133);
     private static final int PURPLE = Color.rgb(120, 96, 216), BACKGROUND = Color.rgb(246, 245, 251);
     private SecureStore store;
     private EditText url, model, key;
     private TextView status;
+    private TextView recordingStatus;
     private TextView updateStatus;
     private Button checkUpdate, updateAction, cancelUpdate;
     private UpdateManager updater;
@@ -135,7 +134,7 @@ public final class MainActivity extends Activity {
 
         LinearLayout launch = card(page, 18);
         addText(launch, "02  开启小悬浮按钮", 18, INK, true, 0);
-        addText(launch, "授权显示在其他应用上层和屏幕共享。需要切换多个应用时，请在系统弹窗选择“整个屏幕”。", 14, MUTED, false, 10);
+        addText(launch, "允许显示在其他应用上层。普通识题会在每次点 AQ 时请求共享，取到画面立即结束共享。", 14, MUTED, false, 10);
         launch.addView(button("开启悬浮识题  ↗", true, this::startFlow));
         launch.addView(button("停止并退出", false, () -> {
             stopService(new Intent(this, CaptureService.class));
@@ -144,12 +143,22 @@ public final class MainActivity extends Activity {
         status = text("", 13, PURPLE, false);
         status.setPadding(0, dp(12), 0, 0);
         launch.addView(status);
+        if (Build.VERSION.SDK_INT >= 30) {
+            addText(launch, "边录屏边识题", 16, INK, true, 16);
+            addText(launch, "在系统无障碍设置中开启“AutoQuestion 录屏兼容”。开启后只在点 AQ 时取一帧并发送给所填模型，录屏可继续。", 13, MUTED, false, 6);
+            launch.addView(button("设置录屏兼容", false, () -> {
+                try { startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); }
+                catch (RuntimeException error) { setStatus("请在系统设置的无障碍服务中开启 AutoQuestion 录屏兼容。"); }
+            }));
+            recordingStatus = text("", 13, MUTED, false);
+            launch.addView(recordingStatus);
+        }
 
         LinearLayout tips = card(page, 18);
         addText(tips, "小方框，三个动作", 18, INK, true, 0);
         addText(tips, "轻点 AQ  ·  识别当前屏幕全部完整题目\n拖动方框  ·  移动到不挡题的位置\n长按方框  ·  查看上次答案或停止", 14, MUTED, false, 12);
         addText(tips, "答案可长按选择或点按钮复制，填空支持逐空复制。复制后请自行切换应用粘贴。"
-                + "\n按 Home 后可继续悬浮。点“停止并退出”、划除最近任务或在通知里停止，都会释放屏幕共享和悬浮窗。锁屏或系统结束共享后，需要重新开启。", 12, MUTED, false, 12);
+                + "\n按 Home 后可继续悬浮。点“停止并退出”、划除最近任务或在通知里停止，都会关闭悬浮窗并取消识题。", 12, MUTED, false, 12);
 
         addText(page, "只在你轻点时发送一张屏幕图片给所填 API。\n图片只在内存中处理，不写相册、文件或历史；答案也只在当前会话保留。"
                 + "\n主动复制后，系统剪贴板可能在停止应用后继续保留答案。应用不会自动读取或清空剪贴板。"
@@ -216,6 +225,11 @@ public final class MainActivity extends Activity {
     }
 
     private void updateStatus() {
+        if (recordingStatus != null) {
+            boolean active = RecognitionScreenshotService.connected() != null;
+            recordingStatus.setText(active ? "录屏兼容已开启 · 可以边录边识题"
+                    : RecognitionScreenshotService.isEnabled(this) ? "录屏兼容服务正在连接" : "录屏兼容未开启");
+        }
         if (CaptureService.isRunning()) setStatus("悬浮识题已开启 · 轻点左上角 AQ 开始");
         else setStatus(store.hasKey() ? "配置已保存。点上方按钮开启悬浮识题。" : "先保存配置，再开启悬浮识题。");
     }
@@ -246,33 +260,17 @@ public final class MainActivity extends Activity {
                 && !getPreferences(MODE_PRIVATE).getBoolean("asked_notifications", false)) {
             getPreferences(MODE_PRIVATE).edit().putBoolean("asked_notifications", true).apply();
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_REQUEST);
-        } else requestCapture();
-    }
-
-    private void requestCapture() {
-        MediaProjectionManager manager = getSystemService(MediaProjectionManager.class);
-        try {
-            Intent request = Build.VERSION.SDK_INT >= 34
-                    ? manager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay())
-                    : manager.createScreenCaptureIntent();
-            startActivityForResult(request, CAPTURE_REQUEST);
-        } catch (Exception e) { setStatus("无法打开系统屏幕共享授权，请重新打开应用再试。"); }
+        } else startOverlay();
     }
 
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(requestCode, permissions, results);
-        if (requestCode == NOTIFICATION_REQUEST) requestCapture();
+        if (requestCode == NOTIFICATION_REQUEST) startOverlay();
     }
 
-    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != CAPTURE_REQUEST) return;
-        if (resultCode != RESULT_OK || data == null) { setStatus("未授权屏幕共享，未启动识题。"); return; }
-        Intent service = new Intent(this, CaptureService.class)
-                .putExtra(CaptureService.EXTRA_RESULT_CODE, resultCode)
-                .putExtra(CaptureService.EXTRA_RESULT_DATA, data);
-        try { startForegroundService(service); moveTaskToBack(true); }
-        catch (Exception e) { setStatus("启动失败。请检查悬浮窗权限，再次授权屏幕共享。"); }
+    private void startOverlay() {
+        try { startForegroundService(new Intent(this, CaptureService.class)); moveTaskToBack(true); }
+        catch (RuntimeException e) { setStatus("启动失败，请检查悬浮窗权限后重试。"); }
     }
 
     // API 33+ uses the registered OnBackInvokedDispatcher; this is the API 26-32 path.

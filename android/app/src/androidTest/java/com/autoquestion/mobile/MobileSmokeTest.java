@@ -40,6 +40,7 @@ public final class MobileSmokeTest extends InstrumentationTestCase {
             + "验证：3 + 2 = 5，3 − 2 = 1。\n所以 (x, y) = (3, 2)。";
     private static final String ESSAY_ANSWER = "第一段：植物通过光合作用把光能转化为化学能。\n\n"
             + "第二段：叶绿体中的色素吸收光，生成的能量用于固定二氧化碳。";
+    private static final String SCREENSHOT_SERVICE = "com.autoquestion.mobile/.RecognitionScreenshotService";
     private static final AtomicInteger requests = new AtomicInteger();
     private static final AtomicInteger cancelledRequests = new AtomicInteger();
     private static volatile CountDownLatch requestEntered = new CountDownLatch(1);
@@ -53,32 +54,22 @@ public final class MobileSmokeTest extends InstrumentationTestCase {
 
     public void testRealProjectionOverlaySixQuestionsAndStop() throws Exception {
         Instrumentation instrumentation = getInstrumentation();
-        assertTrue("Clipboard smoke must run only on a disposable Android emulator",
-                "ranchu".equals(android.os.Build.HARDWARE) || "goldfish".equals(android.os.Build.HARDWARE));
-        context = instrumentation.getTargetContext();
-        automation = instrumentation.getUiAutomation();
-        freezeRotation(UiAutomation.ROTATION_FREEZE_0, android.content.res.Configuration.ORIENTATION_PORTRAIT);
-        android.accessibilityservice.AccessibilityServiceInfo info = automation.getServiceInfo();
-        info.flags |= android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
-                | android.accessibilityservice.AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS;
-        automation.setServiceInfo(info);
-        // Reject any unexpected destination. No model credentials or real API are used.
-        MockHttps.install(url -> {
-            if (UpdatePolicy.RELEASES_URL.equals(url.toString())) return new UpdateSmokeTest.Response(url, "[]".getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            if (!"synthetic.autoquestion.invalid".equals(url.getHost())) throw new IOException("Unexpected test destination");
-            return new FakeConnection(url);
-        });
-        shell("appops set com.autoquestion.mobile SYSTEM_ALERT_WINDOW allow");
-        shell("pm grant com.autoquestion.mobile android.permission.POST_NOTIFICATIONS");
-        SecureStore store = new SecureStore(context);
-        store.save(new ApiConfig("https://synthetic.autoquestion.invalid/v1", "synthetic-vision"), "synthetic-test-key-no-account");
-        activity = (MainActivity) instrumentation.startActivitySync(new Intent(context, MainActivity.class)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK));
+        SecureStore store = prepareOverlayTest(0);
         try {
-            startAndConsent();
+            startOverlay();
             showSyntheticQuestions();
+            assertNoProjection("An idle AQ bubble must leave screen sharing free for the system recorder");
+            assertBubbleInScreenshot();
+            awaitClick("AQ", false, 5000);
+            awaitConsentButton();
+            shell("input keyevent KEYCODE_BACK");
+            awaitText("AQ", 5000);
+            assertNoProjection("Declining sharing must leave AQ available without an active projection");
+            assertEquals(0, requests.get());
             assertTrue("Small overlay must be accessible", clickText("AQ", false));
+            grantConsent();
             assertTrue("A real projected frame must reach the in-memory fake API", requestEntered.await(15, TimeUnit.SECONDS));
+            assertNoProjection("Projection must be released before calling the model");
             assertEquals(1, requests.get());
             int[] portrait = verifyCapturedRequest();
             assertTrue("Initial capture must be portrait: " + portrait[0] + "x" + portrait[1], portrait[1] > portrait[0]);
@@ -89,6 +80,7 @@ public final class MobileSmokeTest extends InstrumentationTestCase {
             assertEquals("Busy taps must not enqueue work", 1, requests.get());
             answerAllowed.countDown();
             awaitText("第 1 题 · 单选", 15000);
+            assertNoProjection("Displaying answers must leave screen sharing free");
             assertTrue("First answer must be shown", containsText("A · Alpha"));
             assertCopiedAndPasted("复制第 1 题完整答案", "A · Alpha");
             assertCopiedAndPasted("复制第 4 题第 1 空", "2");
@@ -110,10 +102,11 @@ public final class MobileSmokeTest extends InstrumentationTestCase {
             ScreenFixtureActivity rotated = (ScreenFixtureActivity) monitor.waitForActivityWithTimeout(5000);
             instrumentation.removeMonitor(monitor);
             if (rotated != null) fixture = rotated;
-            assertTrue("Rotating must keep the same approved projection session", CaptureService.isRunning());
+            assertTrue("Rotating must keep the overlay running", CaptureService.isRunning());
             requestEntered = new CountDownLatch(1); answerAllowed = new CountDownLatch(1);
             showSyntheticQuestions();
             awaitClick("AQ", false, 5000);
+            grantConsent();
             assertTrue("A landscape frame must be captured", requestEntered.await(15, TimeUnit.SECONDS));
             int[] landscape = verifyCapturedRequest();
             assertTrue("Projection must resize to landscape", landscape[0] > landscape[1]);
@@ -122,7 +115,7 @@ public final class MobileSmokeTest extends InstrumentationTestCase {
             awaitText("第 1 题 · 单选", 15000);
             assertTrue("Answer panel has a stop action", clickText("停止", false));
             awaitStopped();
-            assertFalse("Projection grant must be released", shell("dumpsys media_projection").contains("com.autoquestion.mobile"));
+            assertNoProjection("Stopping must release the projection grant");
 
             // A fresh consent is obtained for a new session. Cancelling an active request releases it.
             requestEntered = new CountDownLatch(1);
@@ -130,12 +123,13 @@ public final class MobileSmokeTest extends InstrumentationTestCase {
             instrumentation.runOnMainSync(() -> activity.finish());
             activity = (MainActivity) instrumentation.startActivitySync(new Intent(context, MainActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK));
-            startAndConsent();
+            startOverlay();
             // Cancellation needs only an owned, public emulator screen; the six-question fixture
             // has already been checked in both orientations in the preceding session.
             shell("input keyevent KEYCODE_HOME");
             awaitText("Phone", 5000);
             assertTrue(clickText("AQ", false));
+            grantConsent();
             assertTrue(requestEntered.await(15, TimeUnit.SECONDS));
             assertEquals(3, requests.get());
             awaitText("···", 5000);
@@ -151,36 +145,200 @@ public final class MobileSmokeTest extends InstrumentationTestCase {
             assertFalse("No screenshot is written to shared DCIM/Pictures", shell(
                     "find /sdcard/DCIM /sdcard/Pictures -type f 2>/dev/null").matches("(?s).+\\.(png|jpe?g).*"));
         } finally {
-            answerAllowed.countDown();
-            context.stopService(new Intent(context, CaptureService.class));
-            if (activity != null) instrumentation.runOnMainSync(() -> activity.finish());
-            instrumentation.runOnMainSync(ScreenFixtureActivity::finishOwnedActivities);
-            automation.setRotation(UiAutomation.ROTATION_UNFREEZE);
-            store.forget();
+            finishOverlayTest(store);
             instrumentation.runOnMainSync(() -> {
                 ClipboardManager clipboard = context.getSystemService(ClipboardManager.class);
                 if (android.os.Build.VERSION.SDK_INT >= 28) clipboard.clearPrimaryClip();
                 else clipboard.setPrimaryClip(ClipData.newPlainText("", ""));
             });
-            if (capturedRequest != null) java.util.Arrays.fill(capturedRequest, (byte) 0);
         }
     }
 
-    private void startAndConsent() throws Exception {
+    public void testRecognizesWhileSystemRecorderOwnsProjection() throws Exception {
+        if (android.os.Build.VERSION.SDK_INT < 30) return;
+        SecureStore store = prepareOverlayTest(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES);
+        String previousServices = shell("settings get secure enabled_accessibility_services").trim();
+        String previousEnabled = shell("settings get secure accessibility_enabled").trim();
+        String previousTiles = shell("settings get secure sysui_qs_tiles").trim();
+        boolean startRequested = false;
+        try {
+            assertFalse("The disposable emulator must start without an active recorder", systemRecordingActive());
+            String services = "null".equals(previousServices) || previousServices.isEmpty()
+                    ? SCREENSHOT_SERVICE : previousServices + ":" + SCREENSHOT_SERVICE;
+            setSecureSetting("enabled_accessibility_services", services);
+            setSecureSetting("accessibility_enabled", "1");
+            setSecureSetting("sysui_qs_tiles", "screenrecord,internet");
+            awaitScreenshotService();
+            startOverlay();
+            showSyntheticQuestions();
+
+            openSystemRecorderTile();
+            awaitText("Record your screen?", 5000);
+            if (containsText("Record one app")) {
+                tapText("Record one app");
+                awaitText("Record this screen", 5000);
+                tapText("Record this screen");
+            }
+            awaitClick("Record screen", false, 5000);
+            startRequested = true;
+            awaitSystemRecording(true);
+            awaitText("Synthetic questions", 5000);
+
+            awaitClick("AQ", false, 5000);
+            boolean reachedModel = requestEntered.await(15, TimeUnit.SECONDS);
+            assertTrue("A real screenshot must reach the model during system recording; visible: " + visibleText(),
+                    reachedModel);
+            assertEquals(1, requests.get());
+            verifyCapturedRequest();
+            assertTrue("SystemUI must still own the projection while the model runs", systemRecordingActive());
+            answerAllowed.countDown();
+            awaitText("第 1 题 · 单选", 15000);
+            assertTrue("AQ must show the first answer during system recording", containsText("A · Alpha"));
+            assertTrue("SystemUI must still own the projection with AQ answers visible", systemRecordingActive());
+        } finally {
+            try {
+                if (startRequested && systemRecordingActive()) {
+                    openSystemRecorderTile();
+                    awaitSystemRecording(false);
+                }
+            } finally {
+                shell("cmd statusbar collapse");
+                setSecureSetting("enabled_accessibility_services", previousServices);
+                setSecureSetting("accessibility_enabled", previousEnabled);
+                setSecureSetting("sysui_qs_tiles", previousTiles);
+                finishOverlayTest(store);
+            }
+        }
+    }
+
+    private SecureStore prepareOverlayTest(int automationFlags) throws Exception {
+        Instrumentation instrumentation = getInstrumentation();
+        assertTrue("Overlay smoke must run only on a disposable Android emulator",
+                "ranchu".equals(android.os.Build.HARDWARE) || "goldfish".equals(android.os.Build.HARDWARE));
+        requests.set(0);
+        cancelledRequests.set(0);
+        requestEntered = new CountDownLatch(1);
+        answerAllowed = new CountDownLatch(1);
+        context = instrumentation.getTargetContext();
+        automation = instrumentation.getUiAutomation(automationFlags);
+        freezeRotation(UiAutomation.ROTATION_FREEZE_0, android.content.res.Configuration.ORIENTATION_PORTRAIT);
+        android.accessibilityservice.AccessibilityServiceInfo info = automation.getServiceInfo();
+        info.flags |= android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+                | android.accessibilityservice.AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS;
+        automation.setServiceInfo(info);
+        // Reject any unexpected destination. No model credentials or real API are used.
+        MockHttps.install(url -> {
+            if (UpdatePolicy.RELEASES_URL.equals(url.toString())) return new UpdateSmokeTest.Response(url, "[]".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            if (!"synthetic.autoquestion.invalid".equals(url.getHost())) throw new IOException("Unexpected test destination");
+            return new FakeConnection(url);
+        });
+        shell("appops set com.autoquestion.mobile SYSTEM_ALERT_WINDOW allow");
+        shell("pm grant com.autoquestion.mobile android.permission.POST_NOTIFICATIONS");
+        SecureStore store = new SecureStore(context);
+        store.save(new ApiConfig("https://synthetic.autoquestion.invalid/v1", "synthetic-vision"), "synthetic-test-key-no-account");
+        activity = (MainActivity) instrumentation.startActivitySync(new Intent(context, MainActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK));
+        return store;
+    }
+
+    private void finishOverlayTest(SecureStore store) throws Exception {
+        answerAllowed.countDown();
+        context.stopService(new Intent(context, CaptureService.class));
+        Instrumentation instrumentation = getInstrumentation();
+        if (activity != null) instrumentation.runOnMainSync(() -> activity.finish());
+        instrumentation.runOnMainSync(ScreenFixtureActivity::finishOwnedActivities);
+        automation.setRotation(UiAutomation.ROTATION_UNFREEZE);
+        store.forget();
+        if (capturedRequest != null) {
+            java.util.Arrays.fill(capturedRequest, (byte) 0);
+            capturedRequest = null;
+        }
+    }
+
+    private void setSecureSetting(String key, String value) throws IOException {
+        if ("null".equals(value) || value.isEmpty()) shell("settings delete secure " + key);
+        else shell("settings put secure " + key + " " + value);
+    }
+
+    private void awaitScreenshotService() {
+        long deadline = SystemClock.uptimeMillis() + 5000;
+        boolean[] connected = {false};
+        while (!connected[0] && SystemClock.uptimeMillis() < deadline) {
+            getInstrumentation().runOnMainSync(() -> connected[0] = RecognitionScreenshotService.connected() != null);
+            if (!connected[0]) SystemClock.sleep(50);
+        }
+        assertTrue("The enabled screenshot accessibility service must connect", connected[0]);
+    }
+
+    private void openSystemRecorderTile() throws IOException {
+        shell("cmd statusbar expand-settings");
+        awaitClick("Screen record", false, 5000);
+    }
+
+    private void tapText(String text) throws IOException {
+        AccessibilityNodeInfo item = node(text);
+        assertNotNull("Expected UI text: " + text + "; visible: " + visibleText(), item);
+        android.graphics.Rect bounds = new android.graphics.Rect();
+        item.getBoundsInScreen(bounds);
+        shell("input tap " + bounds.centerX() + " " + bounds.centerY());
+    }
+
+    private boolean systemRecordingActive() throws IOException {
+        return shell("dumpsys media_projection").contains("(com.android.systemui, uid=");
+    }
+
+    private void awaitSystemRecording(boolean active) throws IOException {
+        long deadline = SystemClock.uptimeMillis() + 10000;
+        while (SystemClock.uptimeMillis() < deadline) {
+            if (systemRecordingActive() == active) return;
+            SystemClock.sleep(100);
+        }
+        fail("Expected system recorder active=" + active + "; visible: " + visibleText());
+    }
+
+    private void startOverlay() throws Exception {
         getInstrumentation().runOnMainSync(() -> {
             View button = findView(activity.getWindow().getDecorView(), "开启悬浮识题  ↗");
             assertNotNull("Start action must exist", button);
             button.performClick();
         });
-        long deadline = SystemClock.uptimeMillis() + 15000;
-        while (!CaptureService.isRunning() && SystemClock.uptimeMillis() < deadline) {
+        awaitText("AQ", 5000);
+        assertTrue("AQ must start without screen sharing consent", CaptureService.isRunning());
+    }
+
+    private AccessibilityNodeInfo awaitConsentButton() {
+        long deadline = SystemClock.uptimeMillis() + 10000;
+        while (SystemClock.uptimeMillis() < deadline) {
             for (String consent : new String[]{"Start now", "Share screen", "Start", "立即开始", "开始共享", "共享屏幕"}) {
-                if (clickText(consent, false)) break;
+                AccessibilityNodeInfo button = node(consent);
+                if (button != null && button.isClickable()) return button;
             }
             SystemClock.sleep(100);
         }
-        assertTrue("The system-approved projection session must start; visible: " + visibleText(), CaptureService.isRunning());
-        awaitText("AQ", 5000);
+        throw new AssertionError("Expected system screen sharing consent; visible: " + visibleText());
+    }
+
+    private void grantConsent() {
+        assertTrue("System sharing consent must be actionable",
+                awaitConsentButton().performAction(AccessibilityNodeInfo.ACTION_CLICK));
+    }
+
+    private void assertNoProjection(String message) throws IOException {
+        assertFalse(message, shell("dumpsys media_projection").contains("com.autoquestion.mobile"));
+    }
+
+    private void assertBubbleInScreenshot() {
+        AccessibilityNodeInfo button = node("AQ");
+        assertNotNull(button);
+        android.graphics.Rect bounds = new android.graphics.Rect();
+        button.getBoundsInScreen(bounds);
+        Bitmap screenshot = automation.takeScreenshot();
+        assertNotNull("Screen capture must work while AQ is visible", screenshot);
+        try {
+            assertEquals("System capture must include the AQ bubble's purple background",
+                    android.graphics.Color.rgb(120, 96, 216),
+                    screenshot.getPixel(bounds.left + bounds.width() / 4, bounds.top + bounds.height() / 4));
+        } finally { screenshot.recycle(); }
     }
 
     private void freezeRotation(int rotation, int orientation) {
@@ -324,7 +482,7 @@ public final class MobileSmokeTest extends InstrumentationTestCase {
         selection.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, expected.length());
         assertTrue("The user must be able to select an answer substring",
                 answer.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, selection));
-        assertTrue("The user's contextual Copy action must work for selected text", clickText("Copy", false));
+        awaitClick("Copy", false, 5000);
         assertClipboardPastes(expected);
         answer.performAction(AccessibilityNodeInfo.ACTION_CLEAR_FOCUS);
     }

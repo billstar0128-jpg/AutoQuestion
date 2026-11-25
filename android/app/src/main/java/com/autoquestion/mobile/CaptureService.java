@@ -26,11 +26,13 @@ import android.media.ImageReader;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PersistableBundle;
+import android.os.ResultReceiver;
 import android.provider.Settings;
 import android.view.Choreographer;
 import android.view.Gravity;
@@ -49,27 +51,25 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
 
-/** User-started projection session; one reusable VirtualDisplay, never a cached consent token. */
+/** Keeps the user-started overlay visible and projects only while taking a requested frame. */
 public final class CaptureService extends Service {
-    static final String EXTRA_RESULT_CODE = "projection_result_code";
-    static final String EXTRA_RESULT_DATA = "projection_result_data";
     static final String STOP = "com.autoquestion.mobile.STOP";
     private static final int NOTIFICATION_ID = 104;
     private static final String CHANNEL = "screen-session";
     private static volatile boolean running;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService requests = Executors.newSingleThreadExecutor();
-    private final AtomicBoolean busy = new AtomicBoolean(false);
-    private final AtomicBoolean waitingForFrame = new AtomicBoolean(false);
     private final Object frameLock = new Object();
     private HandlerThread frameThread;
     private Handler frames;
     private WindowManager windowManager;
+    private ResultReceiver consentRequest;
+    private Runnable screenshotTimeout;
     private MediaProjection projection;
+    private MediaProjection.Callback projectionCallback;
     private VirtualDisplay display;
-    private volatile ImageReader reader;
+    private ImageReader reader;
     private BubbleView bubble;
     private LinearLayout panel;
     private Dialog panelDialog;
@@ -79,17 +79,12 @@ public final class CaptureService extends Service {
     private List<AnswerProtocol.Result> lastResults;
     private int captureWidth, captureHeight, sourceWidth, sourceHeight;
     private boolean bubbleAttached;
+    private boolean busy;
+    private boolean waitingForFrame;
+    private boolean projectionForeground;
     private boolean contentVisible = true;
 
     static boolean isRunning() { return running; }
-
-    private final MediaProjection.Callback projectionCallback = new MediaProjection.Callback() {
-        @Override public void onStop() { stopSelf(); }
-        @Override public void onCapturedContentResize(int width, int height) {
-            if (width > 0 && height > 0 && !closing) resizeCapture(width, height);
-        }
-        @Override public void onCapturedContentVisibilityChanged(boolean visible) { contentVisible = visible; }
-    };
 
     @Override public void onCreate() {
         super.onCreate();
@@ -98,41 +93,32 @@ public final class CaptureService extends Service {
         frames = new Handler(frameThread.getLooper());
         NotificationManager notifications = getSystemService(NotificationManager.class);
         NotificationChannel channel = new NotificationChannel(CHANNEL, "悬浮识题", NotificationManager.IMPORTANCE_LOW);
-        channel.setDescription("屏幕共享开启时显示，可随时停止。");
+        channel.setDescription("悬浮识题开启时显示，可随时停止。");
         notifications.createNotificationChannel(channel);
     }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent == null || STOP.equals(intent.getAction())) { stopSelf(); return START_NOT_STICKY; }
-        if (projection != null) return START_NOT_STICKY;
+        if (running) return START_NOT_STICKY;
         try {
-            int code = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED);
-            Intent data = Build.VERSION.SDK_INT >= 33 ? intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent.class)
-                    : intent.getParcelableExtra(EXTRA_RESULT_DATA);
-            if (code != Activity.RESULT_OK || data == null || !Settings.canDrawOverlays(this)) {
-                throw new IllegalStateException("未授权");
-            }
-            // The foreground mediaProjection service must exist before getMediaProjection().
-            if (Build.VERSION.SDK_INT >= 29) startForeground(NOTIFICATION_ID, notification("轻点 AQ 读取当前题目"), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
-            else startForeground(NOTIFICATION_ID, notification("轻点 AQ 读取当前题目"));
-            projection = getSystemService(MediaProjectionManager.class).getMediaProjection(code, data);
-            // Do not retain or reuse the one-session consent Intent.
-            intent.removeExtra(EXTRA_RESULT_DATA);
-            projection.registerCallback(projectionCallback, main);
-            Rect bounds = screenBounds(); sourceWidth = bounds.width(); sourceHeight = bounds.height();
-            setCaptureDimensions(sourceWidth, sourceHeight);
-            reader = newReader();
-            display = projection.createVirtualDisplay("AutoQuestion user session", captureWidth, captureHeight,
-                    getResources().getConfiguration().densityDpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                    reader.getSurface(), null, frames);
-            if (display == null) throw new IllegalStateException("无法创建屏幕共享显示");
+            setForeground(false, "轻点 AQ 读取当前题目");
+            if (!Settings.canDrawOverlays(this)) throw new IllegalStateException("需要悬浮窗权限");
             createBubble();
-            running = true;
-        } catch (Exception e) {
-            Toast.makeText(this, "启动失败，请检查悬浮窗权限并重新授权屏幕共享。", Toast.LENGTH_LONG).show();
+            running = bubbleAttached;
+        } catch (RuntimeException e) {
+            Toast.makeText(this, "启动失败，请检查悬浮窗权限后重试。", Toast.LENGTH_LONG).show();
             stopSelf();
         }
         return START_NOT_STICKY;
+    }
+
+    private void setForeground(boolean capturing, String message) {
+        if (Build.VERSION.SDK_INT >= 29) {
+            int type = Build.VERSION.SDK_INT >= 34 ? ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE : 0;
+            if (capturing) type |= ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION;
+            startForeground(NOTIFICATION_ID, notification(message), type);
+        } else startForeground(NOTIFICATION_ID, notification(message));
+        projectionForeground = capturing;
     }
 
     private Notification notification(String message) {
@@ -141,7 +127,7 @@ public final class CaptureService extends Service {
         PendingIntent stop = PendingIntent.getService(this, 2, new Intent(this, CaptureService.class).setAction(STOP),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         return new Notification.Builder(this, CHANNEL).setSmallIcon(com.autoquestion.mobile.R.drawable.ic_notification)
-                .setContentTitle("AutoQuestion · 屏幕共享已开启").setContentText(message)
+                .setContentTitle("AutoQuestion · 悬浮识题").setContentText(message)
                 .setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true)
                 .setVisibility(Notification.VISIBILITY_SECRET)
                 .addAction(new Notification.Action.Builder(null, "停止", stop).build()).build();
@@ -159,10 +145,12 @@ public final class CaptureService extends Service {
     }
 
     private void setCaptureDimensions(int width, int height) {
-        double scale = Math.min(1.0, 2048.0 / Math.max(width, height));
+        double scale = captureScale(width, height);
         captureWidth = Math.max(1, (int) Math.round(width * scale));
         captureHeight = Math.max(1, (int) Math.round(height * scale));
     }
+
+    static double captureScale(int width, int height) { return Math.min(1.0, 2048.0 / Math.max(width, height)); }
 
     private ImageReader newReader() {
         ImageReader next = ImageReader.newInstance(captureWidth, captureHeight, PixelFormat.RGBA_8888, 2);
@@ -170,27 +158,21 @@ public final class CaptureService extends Service {
         return next;
     }
 
-    private void replaceSurface(boolean armCapture) {
-        synchronized (frameLock) {
-            if (display == null || closing) return;
-            ImageReader previous = reader;
-            reader = newReader();
-            if (armCapture) waitingForFrame.set(true);
-            display.setSurface(reader.getSurface());
-            if (previous != null) previous.close();
-        }
-    }
-
     private void resizeCapture(int width, int height) {
-        if (width == sourceWidth && height == sourceHeight) return;
+        if (display == null || (width == sourceWidth && height == sourceHeight)) return;
         sourceWidth = width; sourceHeight = height;
         setCaptureDimensions(width, height);
-        if (display != null) {
-            if (waitingForFrame.getAndSet(false)) finishError("屏幕方向发生变化，请再点一次 AQ。");
-            display.resize(captureWidth, captureHeight, getResources().getConfiguration().densityDpi);
-            replaceSurface(false);
+        synchronized (frameLock) {
+            ImageReader previous = reader;
+            try {
+                reader = newReader();
+                waitingForFrame = true;
+                display.resize(captureWidth, captureHeight, getResources().getConfiguration().densityDpi);
+                display.setSurface(reader.getSurface());
+            } catch (RuntimeException e) {
+                finishError("屏幕画面发生变化，请再点一次 AQ。");
+            } finally { previous.close(); }
         }
-        clampBubble();
     }
 
     @Override public void onConfigurationChanged(Configuration configuration) {
@@ -241,7 +223,7 @@ public final class CaptureService extends Service {
     private WindowManager.LayoutParams overlayParams(int width, int height) {
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(width, height,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_SECURE,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT);
         params.gravity = Gravity.TOP | Gravity.LEFT; return params;
     }
@@ -259,7 +241,7 @@ public final class CaptureService extends Service {
 
     private void attachBubble() {
         if (bubble == null || bubbleAttached || closing) return;
-        bubble.setText(busy.get() ? "···" : "AQ");
+        bubble.setText(busy ? "···" : "AQ");
         try { windowManager.addView(bubble, bubbleParams); bubbleAttached = true; }
         catch (RuntimeException e) { stopSelf(); }
     }
@@ -272,59 +254,177 @@ public final class CaptureService extends Service {
     }
 
     private void requestCapture() {
-        if (closing || !busy.compareAndSet(false, true)) return;
-        lastResults = null;
-        if (!contentVisible) { finishError("共享的应用当前不可见。请打开题目应用，或重新授权“整个屏幕”。"); return; }
-        hidePanel(); detachBubble();
-        updateNotification("正在读取这一屏，图片不会保存到相册");
-        // Wait for compositor frames, not a guessed sleep. A fresh ImageReader surface
-        // excludes queued images from before our secure overlays were removed.
-        Choreographer.getInstance().postFrameCallback(frame ->
-                Choreographer.getInstance().postFrameCallback(next -> {
-                    if (closing) return;
-                    try { replaceSurface(true); main.postDelayed(frameTimeout, 5000); }
-                    catch (RuntimeException e) { finishError("屏幕共享已不可用，请停止后重新授权。"); }
-                }));
+        if (closing || busy) return;
+        busy = true;
+        bubble.setText("···");
+        hidePanel();
+        if (Build.VERSION.SDK_INT >= 30) {
+            RecognitionScreenshotService screenshot = RecognitionScreenshotService.connected();
+            if (screenshot != null) { requestScreenshot(screenshot); return; }
+            if (RecognitionScreenshotService.isEnabled(this)) {
+                finishError("录屏兼容服务尚未连接，请在系统无障碍设置中确认已开启后重试。");
+                return;
+            }
+        }
+        requestProjectionConsent();
     }
 
-    private final Runnable frameTimeout = () -> {
-        if (waitingForFrame.getAndSet(false)) finishError("没有收到可用的屏幕画面。受保护的应用可能禁止截屏，请切换页面后重试。");
-    };
+    private void requestScreenshot(RecognitionScreenshotService screenshot) {
+        lastResults = null;
+        detachBubble();
+        updateNotification("正在读取这一屏，图片不会保存到相册");
+        Runnable timeout = () -> finishError("未收到画面，请确认录屏兼容服务已开启后重试。");
+        screenshotTimeout = timeout;
+        main.postDelayed(timeout, 5000);
+        afterOverlaysHidden(() -> {
+            if (screenshotTimeout != timeout) return;
+            if (RecognitionScreenshotService.connected() != screenshot) {
+                finishError("录屏兼容服务已断开，请在系统无障碍设置中确认已开启后重试。");
+                return;
+            }
+            try {
+                screenshot.capture(task -> {
+                    if (!frames.post(task)) task.run();
+                }, bitmap -> main.post(() -> {
+                    if (screenshotTimeout != timeout) { recycleFrame(bitmap); return; }
+                    if (bitmap == null || RecognitionScreenshotService.connected() != screenshot) {
+                        recycleFrame(bitmap);
+                        finishError("无法获取画面，请确认录屏兼容服务已开启，并在允许截屏的页面重试。");
+                        return;
+                    }
+                    clearScreenshotTimeout();
+                    analyzeFrame(bitmap);
+                }));
+            } catch (RuntimeException e) { finishError("无法使用录屏兼容服务，请在系统无障碍设置中检查后重试。"); }
+        });
+    }
 
-    private void onImage(ImageReader source) {
-        Image image = null;
-        Bitmap bitmap = null;
+    private void clearScreenshotTimeout() {
+        if (screenshotTimeout != null) main.removeCallbacks(screenshotTimeout);
+        screenshotTimeout = null;
+    }
+
+    private void requestProjectionConsent() {
+        consentRequest = new ResultReceiver(main) {
+            @Override protected void onReceiveResult(int code, Bundle result) {
+                if (closing || consentRequest != this) return;
+                main.removeCallbacks(consentLaunchTimeout);
+                if (code == CapturePermissionActivity.DIALOG_LAUNCHED) return;
+                consentRequest = null;
+                if (code == Activity.RESULT_OK && result != null) {
+                    Intent data = Build.VERSION.SDK_INT >= 33
+                            ? result.getParcelable(CapturePermissionActivity.EXTRA_CONSENT, Intent.class)
+                            : result.getParcelable(CapturePermissionActivity.EXTRA_CONSENT);
+                    if (data != null) { startProjection(code, data); return; }
+                }
+                if (code == CapturePermissionActivity.LAUNCH_FAILED) {
+                    finishError("无法打开屏幕共享授权，请再点一次 AQ。");
+                } else {
+                    busy = false;
+                    bubble.setText(R.string.bubble_label);
+                    updateNotification("未开始共享 · 轻点 AQ 可重试");
+                }
+            }
+        };
+        try {
+            main.postDelayed(consentLaunchTimeout, 5000);
+            startActivity(new Intent(this, CapturePermissionActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    .putExtra(CapturePermissionActivity.EXTRA_RECEIVER, consentRequest));
+        } catch (RuntimeException e) { finishError("无法打开屏幕共享授权，请再点一次 AQ。"); }
+    }
+
+    private final Runnable consentLaunchTimeout = () -> finishError("无法打开屏幕共享授权，请再点一次 AQ。");
+    private final Runnable frameTimeout = () ->
+            finishError("没有收到可用的屏幕画面。受保护的应用可能禁止截屏，请切换页面后重试。");
+
+    private void startProjection(int code, Intent data) {
+        lastResults = null;
+        contentVisible = true;
+        try {
+            setForeground(true, "正在读取这一屏，图片不会保存到相册");
+            MediaProjection current = getSystemService(MediaProjectionManager.class).getMediaProjection(code, data);
+            if (current == null) throw new IllegalStateException("没有屏幕共享授权");
+            projection = current;
+            projectionCallback = new MediaProjection.Callback() {
+                @Override public void onStop() {
+                    if (projection == current) finishError("屏幕共享已结束，请再点一次 AQ。");
+                }
+                @Override public void onCapturedContentResize(int width, int height) {
+                    if (projection == current && width > 0 && height > 0) resizeCapture(width, height);
+                }
+                @Override public void onCapturedContentVisibilityChanged(boolean visible) {
+                    if (projection == current) contentVisible = visible;
+                }
+            };
+            current.registerCallback(projectionCallback, main);
+            hidePanel(); detachBubble();
+            main.postDelayed(frameTimeout, 5000);
+            // Let the compositor remove both the consent window and our overlays before projecting.
+            afterOverlaysHidden(() -> { if (projection == current) startDisplay(current); });
+        } catch (RuntimeException e) { finishError("无法开始屏幕共享，请再点一次 AQ。"); }
+    }
+
+    private void afterOverlaysHidden(Runnable capture) {
+        Choreographer.getInstance().postFrameCallback(frame ->
+                Choreographer.getInstance().postFrameCallback(next -> { if (!closing) capture.run(); }));
+    }
+
+    private void startDisplay(MediaProjection current) {
+        Rect bounds = screenBounds();
+        sourceWidth = bounds.width(); sourceHeight = bounds.height();
+        setCaptureDimensions(sourceWidth, sourceHeight);
         try {
             synchronized (frameLock) {
-                if (source != reader || closing) return;
-                image = source.acquireLatestImage();
-                if (image == null || !waitingForFrame.compareAndSet(true, false)) return;
-                main.removeCallbacks(frameTimeout);
-                bitmap = bitmapFrom(image);
-                image.close(); image = null;
+                reader = newReader();
+                waitingForFrame = true;
+                display = current.createVirtualDisplay("AutoQuestion frame", captureWidth, captureHeight,
+                        getResources().getConfiguration().densityDpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                        reader.getSurface(), null, frames);
+                if (display == null) throw new IllegalStateException("无法创建屏幕共享显示");
             }
-            if (bitmap == null) { main.post(() -> finishError("画面为空或被应用保护，未发送图片。请换一个允许截屏的页面。")); return; }
-            Bitmap captured = bitmap; bitmap = null;
-            main.post(() -> { attachBubble(); updateNotification("正在分析题目，题多请稍等 · 长按 AQ 可停止"); });
-            CaptureTask task = new CaptureTask(captured);
-            try { requests.execute(task); }
-            catch (java.util.concurrent.RejectedExecutionException e) { task.discard(); }
-        } catch (Exception e) {
-            if (!closing && busy.get()) main.post(() -> finishError("无法读取这一屏，请旋转回来或重新授权屏幕共享。"));
-        } finally {
-            if (image != null) image.close();
-            if (bitmap != null) { bitmap.eraseColor(Color.TRANSPARENT); bitmap.recycle(); }
+        } catch (RuntimeException e) { finishError("无法读取这一屏，请再点一次 AQ。"); }
+    }
+
+    private void onImage(ImageReader source) {
+        Bitmap bitmap = null;
+        synchronized (frameLock) {
+            if (source != reader || closing || !waitingForFrame) return;
+            try (Image image = source.acquireLatestImage()) {
+                if (image == null) return;
+                bitmap = bitmapFrom(image);
+            } catch (RuntimeException ignored) { }
+            waitingForFrame = false;
         }
+        Bitmap captured = bitmap;
+        main.post(() -> deliverFrame(source, captured));
+    }
+
+    private void deliverFrame(ImageReader source, Bitmap bitmap) {
+        if (closing || source != reader) { recycleFrame(bitmap); return; }
+        if (bitmap == null || !contentVisible) {
+            recycleFrame(bitmap);
+            finishError("画面为空、不可见或被应用保护。请打开允许截屏的题目页面后重试。");
+            return;
+        }
+        stopProjection();
+        analyzeFrame(bitmap);
+    }
+
+    private void analyzeFrame(Bitmap bitmap) {
+        attachBubble();
+        updateNotification("正在分析题目，题多请稍等 · 长按 AQ 可停止");
+        requests.execute(new CaptureTask(bitmap));
+    }
+
+    static void recycleFrame(Bitmap bitmap) {
+        if (bitmap != null && !bitmap.isRecycled()) { bitmap.eraseColor(Color.TRANSPARENT); bitmap.recycle(); }
     }
 
     private final class CaptureTask implements Runnable {
         private Bitmap captured;
         CaptureTask(Bitmap captured) { this.captured = captured; }
         private synchronized Bitmap take() { Bitmap bitmap = captured; captured = null; return bitmap; }
-        void discard() {
-            Bitmap bitmap = take();
-            if (bitmap != null) { bitmap.eraseColor(Color.TRANSPARENT); bitmap.recycle(); }
-        }
+        void discard() { recycleFrame(take()); }
         @Override public void run() { Bitmap bitmap = take(); if (bitmap != null) analyze(bitmap); }
     }
 
@@ -371,13 +471,13 @@ public final class CaptureService extends Service {
             List<AnswerProtocol.Result> results = request.analyze(config, secure.readKey(config), png);
             main.post(() -> {
                 if (closing) return;
-                lastResults = results; busy.set(false); attachBubble(); bubble.setText(R.string.bubble_label);
+                lastResults = results; busy = false; attachBubble(); bubble.setText(R.string.bubble_label);
                 updateNotification("已完成 " + results.size() + " 题 · 轻点 AQ 读取下一屏"); hidePanel(); showPanel(null);
             });
         } catch (VisionClient.Failure e) { main.post(() -> finishError(e.getMessage()));
         } catch (Exception e) { main.post(() -> finishError("无法读取安全保存的 API Key，请回主界面重新保存配置。"));
         } finally {
-            if (!bitmap.isRecycled()) { bitmap.eraseColor(Color.TRANSPARENT); bitmap.recycle(); }
+            recycleFrame(bitmap);
             if (png != null) Arrays.fill(png, (byte) 0);
             if (client == request) client = null;
         }
@@ -385,7 +485,11 @@ public final class CaptureService extends Service {
 
     private void finishError(String error) {
         if (closing) return;
-        waitingForFrame.set(false); main.removeCallbacks(frameTimeout); busy.set(false);
+        consentRequest = null;
+        main.removeCallbacks(consentLaunchTimeout);
+        clearScreenshotTimeout();
+        stopProjection();
+        busy = false;
         attachBubble(); if (bubble != null) bubble.setText(R.string.bubble_label);
         lastResults = null;
         updateNotification("本次未完成 · 轻点 AQ 可重试"); hidePanel(); showPanel(error);
@@ -396,7 +500,7 @@ public final class CaptureService extends Service {
         panel = new LinearLayout(this); panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(dp(16), dp(14), dp(16), dp(14));
         panel.setBackground(background(Color.WHITE, 17)); panel.setElevation(dp(8));
-        TextView title = label(error != null ? "这次没有完成" : busy.get() ? "正在分析这一屏…" : "AutoQuestion · 本屏答案", 16, true);
+        TextView title = label(error != null ? "这次没有完成" : busy ? "正在识题…" : "AutoQuestion · 本屏答案", 16, true);
         panel.addView(title);
         ScrollView scroll = new ScrollView(this);
         LinearLayout body = new LinearLayout(this); body.setOrientation(LinearLayout.VERTICAL);
@@ -406,7 +510,7 @@ public final class CaptureService extends Service {
                 error == null && lastResults != null ? maxBody : -2); scrollParams.topMargin = dp(10);
         panel.addView(scroll, scrollParams);
         if (error != null) body.addView(label(error, 14, false));
-        else if (busy.get()) body.addView(label("正在分别分析这一屏的题目，题多时可能需要更久。最长等待约 3 分钟，可收起面板继续查看，或随时停止共享。", 14, false));
+        else if (busy) body.addView(label("题多时可能需要更久。最长等待约 3 分钟，可收起面板继续查看，或随时停止识题。", 14, false));
         else if (lastResults == null) body.addView(label("轻点小方框，识别当前屏幕的完整题目。", 14, false));
         else for (int i = 0; i < lastResults.size(); i++) {
             AnswerProtocol.Result result = lastResults.get(i);
@@ -545,18 +649,27 @@ public final class CaptureService extends Service {
 
     @Override public void onTaskRemoved(Intent rootIntent) { stopSelf(); super.onTaskRemoved(rootIntent); }
 
-    @Override public void onDestroy() {
-        closing = true; running = false; waitingForFrame.set(false);
-        main.removeCallbacksAndMessages(null); hidePanel(); detachBubble();
-        VisionClient request = client; if (request != null) request.cancel();
-        for (Runnable queued : requests.shutdownNow()) if (queued instanceof CaptureTask) ((CaptureTask) queued).discard();
+    private void stopProjection() {
+        main.removeCallbacks(frameTimeout);
         synchronized (frameLock) {
+            waitingForFrame = false;
             if (display != null) { display.release(); display = null; }
             if (reader != null) { reader.close(); reader = null; }
         }
         if (projection != null) {
             projection.unregisterCallback(projectionCallback); projection.stop(); projection = null;
+            projectionCallback = null;
         }
+        if (projectionForeground && !closing) setForeground(false, "轻点 AQ 读取当前题目");
+    }
+
+    @Override public void onDestroy() {
+        closing = true; running = false; consentRequest = null;
+        main.removeCallbacks(consentLaunchTimeout); hidePanel(); detachBubble();
+        clearScreenshotTimeout();
+        VisionClient request = client; if (request != null) request.cancel();
+        for (Runnable queued : requests.shutdownNow()) if (queued instanceof CaptureTask) ((CaptureTask) queued).discard();
+        stopProjection();
         if (frameThread != null) frameThread.quitSafely();
         lastResults = null; bubble = null;
         stopForeground(STOP_FOREGROUND_REMOVE);

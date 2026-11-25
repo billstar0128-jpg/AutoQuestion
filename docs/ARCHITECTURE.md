@@ -51,7 +51,7 @@ Provider Profile (brand / editable defaults)
 
 ## Android
 
-原生 Java App 使用独立的 HTTPS Chat Completions 客户端，共用同屏多题 JSON 协议，不依赖 Windows 服务。MediaProjection 与 mediaProjection 类型前台服务持有一份捕获会话，悬浮按钮点击后才编码一帧并请求。Android Keystore 保存加密密钥，截图和答案只在内存中。服务停止时释放悬浮窗、VirtualDisplay、ImageReader、MediaProjection 和请求。完整操作与系统限制见 [Android](ANDROID.md)。
+原生 Java App 使用独立的 HTTPS Chat Completions 客户端，共用同屏多题 JSON 协议，不依赖 Windows 服务。悬浮服务待机时不持有屏幕共享。普通模式经用户授权后创建 MediaProjection，取到一帧立即释放 VirtualDisplay、ImageReader 和 MediaProjection。Android 11 及以上启用录屏兼容后，单帧捕获改用用户启用的 AccessibilityService，复用同一图像上传流程。Android Keystore 保存加密密钥，截图和答案只在内存中。停止服务会移除悬浮窗并取消捕获或模型请求。完整操作与系统限制见 [Android](ANDROID.md)。
 
 ## Application updates — 0.5.0
 
