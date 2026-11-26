@@ -14,6 +14,8 @@ screenshots/
 build/
 dist/
 *.egg-info/
+# Local drafting and promotional materials stay out of the public repository.
+/output/
 # 旧实验文件未经公开发布审计，不加入仓库。
 legacy_main.py
 .coverage
