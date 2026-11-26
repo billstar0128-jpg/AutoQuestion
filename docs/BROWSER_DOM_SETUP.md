@@ -1,11 +1,11 @@
-# Browser DOM Setup — 0.2.0
+# Chrome / Edge 扩展配置
 
 这是可选步骤。WPS、记事本和 PDF 阅读器可以直接用 Vision，不需要浏览器扩展。
 仅支持标准 Chrome / Edge（Chromium 116+ 的 MV3 能力）；企业策略、特殊发行版和浏览器内置页面可能禁止注入。
 
 ## 1. 安装扩展
 
-先解压完整 AutoQuestion 源码。找到与 main.py 同级的 `extension` 文件夹，其中应有 manifest.json。
+完整解压 Windows 程序包或源码，找到其中的 `extension` 文件夹，其中应有 `manifest.json`。
 保持这个文件夹的位置不变，浏览器后续会从这里加载扩展。
 
 - Chrome：地址栏输入 `chrome://extensions`，打开右上角“开发者模式”，点击“加载已解压的扩展程序”，选择 **extension 文件夹**。
@@ -16,7 +16,7 @@ Chrome 和 Edge 要分别加载、分别配对；不要选择项目根目录、Z
 
 ## 2. 配对本次运行
 
-关闭旧 AutoQuestion，在项目根目录 PowerShell 中运行：
+Windows App 中先以 AUTO 或 DOM 启动识题，在“模型与配置”点“获取本次配对码”。若从源码运行，先关闭旧实例，再在项目根目录 PowerShell 运行以下命令。
 
 ```powershell
 .\.venv-win\Scripts\python.exe main.py --pair-browser
@@ -25,7 +25,7 @@ Chrome 和 Edge 要分别加载、分别配对；不要选择项目根目录、Z
 设置中的 Input Mode 应为 AUTO 或 DOM。必要时先运行 `main.py --setup` 修改；仅在本机输入 API Key。
 程序显示本次 32 位配对码的小窗口。点浏览器中的 AutoQuestion 扩展图标，在密码框输入该码，点“连接”。
 扩展和程序显示 `Browser DOM Bridge: connected` 即连接成功。Chrome / Edge 可用同一个本次配对码，程序按真实进程匹配。
-配好后关闭配对窗口进入 READY，关闭扩展弹窗，把题目页面放前台再 F8。
+控制台版配对后关闭配对窗口即可进入 READY。关闭扩展弹窗，把题目页面放到前台再按 F8。
 
 配对码不是 API Key。它不写配置、日志、URL 或磁盘，只用于本次内存会话。
 重新启动 AutoQuestion、重新加载扩展或浏览器丢弃后台 worker 后，需要重新配对。
@@ -57,7 +57,7 @@ Canvas 应 `Browser DOM unavailable → Fallback: VISION`。Vision 需要真实�
 
 | 现象 | 检查 |
 |---|---|
-| waiting / 未连接 | AUTO/DOM 是否启动、是否带 --pair-browser、本次配对码是否有效、扩展是否启用 |
+| waiting / 未连接 | 确认 AUTO 或 DOM 已启动、扩展已启用，并使用当前运行实例的配对码。 |
 | Bridge unavailable | 关闭旧实例；运行 --doctor；端口 37841 被占用时不要结束不认识的进程 |
 | connected 但 F8 走 Vision | 关弹窗，确认当前浏览器已配对；允许当前站点；确认题目与选项在视口中 |
 | DOM unavailable | Canvas、图片、缺标签、多道歧义题、跨域 iframe、封闭 shadow 或自绘控件可能只能用 Vision |
@@ -68,4 +68,4 @@ Canvas 应 `Browser DOM unavailable → Fallback: VISION`。Vision 需要真实�
 
 ESC 清理 Python bridge、热键和本次自有 Demo，不关闭你自己的浏览器。
 测试 HTTP 服务器在它自己的终端按 Ctrl+C 停止。
-详细边界见 [Privacy](../PRIVACY.md)、[Security Model](SECURITY_MODEL.md)、[M15 人工验收](MANUAL_ACCEPTANCE_M15.md)。
+详细边界见 [隐私说明](../PRIVACY.md)、[安全模型](SECURITY_MODEL.md)及[常见问题](FAQ.md)。

@@ -1,95 +1,25 @@
-# Release Checklist — 0.2.0 / M15
+# 发布检查表
 
-The owner explicitly authorized Stable publication without waiting for GUI acceptance. Historical M14 results below do not substitute for M15 automatic evidence.
+适用于后续公开发行。按平台记录版本、提交、资产和实际验证结果，两端可以独立发布。仓库文档维护可以单独合并。
 
-## Mandatory automatic gates
+## 发布前
 
-- [x] Local pytest / unittest / compileall / pip check / Doctor / version checks
-- [x] Browser bridge, extension, AUTO router and prior regression suites
-- [x] Candidate secret / UTF-8 / documentation link audit
-- [x] Tracked, staged and complete Git history audit
-- [x] Main push and real GitHub Actions green
-- [x] Fresh GitHub clone, new venv, install/version/Offline Demo and extension inventory
-- [x] Remote secret and GitHub page audit; Description updated
-- [x] v0.2.0 Stable source-only tag / Release; old v0.1.0rc1 unchanged
+- [ ] 核对 [README](../README.md) 中各平台公开下载入口、对应发布类型和最低系统版本。
+- [ ] Windows 核对应用版本、CLI、程序包与校验文件。Android 核对 Gradle 版本名和 versionCode、包名、安装目标和签名。记录已验证的覆盖安装路径。[Windows 版本定义](../src/autoquestion/__init__.py) · [Android 版本定义](../android/app/build.gradle)
+- [ ] 检查新增 Markdown 的路径和链接。核对 [安全报告渠道](../SECURITY.md)、[隐私说明](../PRIVACY.md)和 [Apache-2.0 许可证](../LICENSE)。
+- [ ] 运行适用检查并核对 GitHub Actions。记录未验证的环境或能力。[已有自动检查](DEVELOPMENT.md#已有自动检查)
+- [ ] 审查候选文件和暂存差异。公开源代码应包含在内，真实 Key、`.env`、私人截图、用户配置、调试日志、签名凭据和本地构建产物应留在 Git 之外。
+- [ ] 从独立环境核对安装说明和发布资产。复核实际随包分发的第三方许可证、浏览器组件和运行时许可，保留所需声明。`pip check` 只检查依赖一致性。
 
-## Non-blocking manual follow-up
+## 人工验收
 
-Chrome / Edge installation, GUI site grants, physical F8, browser → WPS → browser, extension-disabled fallback and real Canvas Vision:
-**Not performed before v0.2.0 release by explicit user decision.**
-Post-release manual validation recommended; these are not release blockers and are not marked passed.
-Owned-window automated managed Demo / Canvas / focus smoke passed separately (1 test, 1.732 s).
+- [ ] **Windows 安装**。完整解压并启动 EXE，确认 WebView2 正常加载。验证首次配置、Key 遮罩和安全凭据、退出/重新启动、单实例与 F8/ESC 释放。
+- [ ] **Windows 识题**。核对普通 AUTO 启动、授权站点扩展配对、纯文本 DOM、Canvas 回退、WPS 或 PDF 的前台截图。切换标签或窗口时应取消目标已变化的任务。验证填空逐空复制、主观答案完整换行和停止后无迟到答案。
+- [ ] **Android 真机**。核对悬浮窗权限、屏幕共享授权、旋转、停止和 Android 11+ 录屏兼容。记录实际使用的机型与系统版本，HyperOS 在覆盖范围内时检查系统权限。核对受保护页面、取消共享和无网络时的提示。[HyperOS 权限](ANDROID.md#小米-hyperos-权限)
+- [ ] **用户主动更新**。检查无新版、失败、取消、安装前验签或摘要失败、正常安装以及配置保留。确认 Windows 桌面快捷方式和 Android 系统确认路径。
+- [ ] **模型效果**。如安排真实调用，记录模型、API 端点、场景和限制。合成 Provider 结果用于验证应用流程。准确率、耗时与计费需有对应测量记录。
 
-Evidence: [M15 validation](VALIDATION_M15.md). Optional steps: [M15 manual follow-up](MANUAL_ACCEPTANCE_M15.md).
-Repository Description target:
-Put a question on screen, press F8, get an answer. Browser DOM when possible, Vision everywhere else.
+## 发布后
 
-## Historical M14 — 0.1.0rc1
-
-M14 publication checks。用户已明确授权公开 main push 和 v0.1.0rc1 Pre-release；Stable 不在本轮范围内。历史自动结果见 [Validation](VALIDATION_M13.md)，人工步骤见 [M13 Acceptance](MANUAL_ACCEPTANCE_M13.md)。下面未完成项不能靠推断勾选。
-
-## Local evidence
-
-M13 historical checks below remain recorded. M14 Phase A passed, including the user's foreground smoke (1 test, 9.441 s); see [M14 validation](VALIDATION_M14.md). The user reports M13 manual acceptance complete; individual real-provider checks were not rerun by the agent.
-
-- [x] M14 offline URL / Model immediate validation and regression tests
-- [x] M14 full pytest / unittest / compileall / pip check / Doctor
-- [x] M14 visible browser smoke (user foreground run passed; earlier activation failures recorded)
-- [x] M14 Git tracked / staged / history publication preflight
-- [x] M14 real GitHub Actions green
-- [x] M14 fresh GitHub clone and remote secret audit
-- [x] M14 repository page audit
-- [x] M14 v0.1.0rc1 tag and Pre-release
-
-- [x] All automated tests pass
-- [x] pytest pass
-- [x] unittest pass
-- [x] compileall pass
-- [x] pip check pass
-- [x] Windows local smoke passes
-- [x] AUTO normal startup does not open Demo (automated)
-- [x] --open-demo DOM / Canvas / return flow passes (automated)
-- [x] Secret audit passes
-- [x] Audited public candidates contain no private screenshots / personal data
-- [x] Clean-room install passes
-- [x] README Quick Start verified in isolated source copy
-- [x] Provider docs agree with implemented presets
-- [x] Version consistent
-- [x] Relative documentation links valid
-- [x] CI configuration prepared
-
-## User manual acceptance
-
-- [ ] First-run Setup manually passes (default No and explicit Yes)
-- [ ] DeepSeek real-provider manual test passes
-- [ ] API Key masking / paste / backspace manually passes
-- [ ] Windows Credential persistence manually passes
-- [ ] Ordinary AUTO no Demo, direct READY
-- [ ] --open-demo works
-- [ ] DOM works
-- [ ] Vision works
-- [ ] Canvas fallback works
-- [ ] Browser → WPS → Browser works
-- [ ] single_choice works
-- [ ] multiple_choice works
-- [ ] true_false works
-- [ ] BUSY / debounce / ESC / Ctrl+C and three restarts pass
-- [ ] Second startup skips full Setup and Demo
-- [ ] --show-config leaks no secret
-- [ ] --doctor leaks no secret
-
-## Publication gates
-
-- [x] License selected: Apache-2.0; standard text in [LICENSE](../LICENSE)
-- [x] Attribution and chosen license reviewed (standard Apache-2.0; no bundled third-party source requiring NOTICE)
-- [x] Real repository URLs and private security contact supplied
-- [x] Staged-file audit before initial commit/push and complete remote history audit passed
-- [x] Real GitHub fresh clone passes (supersedes the historical local-copy check)
-- [x] User explicitly authorized M14 public push and RC pre-release
-- [x] CI passes on GitHub: Windows CPython 3.10.11 / 3.12.10 / 3.14.7
-- [x] RC tag / Pre-release authorized; Stable remains a separate future user decision
-
-M14 publication gates complete. License: Apache-2.0. The historical user-manual checklist above remains attributed to the user's acceptance, not agent reruns.
-Repository: https://github.com/billstar0128-jpg/AutoQuestion
-Release: [v0.1.0rc1 Pre-release](https://github.com/billstar0128-jpg/AutoQuestion/releases/tag/v0.1.0rc1).
-CI and publication results are recorded in the M14 validation document. Stable was unpublished at the end of M14; M15 publication is recorded above.
+- [ ] 核对平台资产实际名称、可下载状态、大小、SHA-256 和标签指向。发布页如有 `SHA256SUMS.txt`，交叉核对其中记录。[GitHub Releases](https://github.com/billstar0128-jpg/AutoQuestion/releases)
+- [ ] 核对解压或安装后的应用版本、网站下载入口和已发布旧版的更新提示。记录发现的问题和后续修复范围。

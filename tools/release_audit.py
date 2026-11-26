@@ -24,13 +24,13 @@ IGNORE_RULES = {'.env', '.env.*', '!.env.example', '.venv/', '.venv-*/', '__pyca
                 'build/', 'dist/', 'legacy_main.py', 'config.json', 'credentials*.json', '.local-browsers/'}
 REQUIRED = (ROOT_FILES - {'LICENSE', 'NOTICE'}) | {
     'docs/ARCHITECTURE.md', 'docs/DEVELOPMENT.md', 'docs/CONFIGURATION.md',
-    'docs/SECURITY_MODEL.md', 'docs/RELEASE_CHECKLIST.md', 'docs/MANUAL_ACCEPTANCE_M13.md',
+    'docs/SECURITY_MODEL.md', 'docs/RELEASE_CHECKLIST.md', 'docs/ANDROID.md',
     f'docs/RELEASE_NOTES_{__version__}.md', '.github/workflows/ci.yml',
     '.github/ISSUE_TEMPLATE/bug_report.md', '.github/ISSUE_TEMPLATE/feature_request.md',
     '.github/pull_request_template.md', 'examples/demo_quiz.html', 'examples/demo_canvas_quiz.html',
     'src/autoquestion/capture/dom_extract.js', 'extension/manifest.json', 'extension/worker.js',
     'extension/extractor.js', 'extension/popup.html', 'extension/popup.js',
-    'docs/BROWSER_DOM_SETUP.md', 'docs/MANUAL_ACCEPTANCE_M15.md',
+    'docs/BROWSER_DOM_SETUP.md', 'docs/API_SETUP.md', 'docs/FAQ.md',
     'src/autoquestion/web/index.html', 'src/autoquestion/web/app.js',
     'src/autoquestion/web/style.css', 'docs/WEB_UI.md'} | {
         f'examples/browser_dom/{name}.html' for name in (

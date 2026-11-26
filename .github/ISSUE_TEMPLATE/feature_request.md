@@ -13,4 +13,3 @@ assignees: ''
 ## Security / privacy impact
 
 Do not include private screenshots, credentials or account details.
-The RC feature scope is frozen; requests do not imply implementation or acceptance.

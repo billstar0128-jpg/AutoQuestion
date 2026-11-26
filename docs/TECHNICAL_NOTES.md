@@ -1,16 +1,6 @@
-# Technical Notes
+# 题目协议与提取细节
 
-从 M1–M12 README 保留的历史协议和实现细节。当前 0.5.0 启动、路由、更新和验收以 [README](../README.md)、[Architecture](ARCHITECTURE.md) 与对应版本验证记录为准；[M15 Acceptance](MANUAL_ACCEPTANCE_M15.md) 保留当时的浏览器验收背景。受管理 Canvas 手动验收使用 --open-demo；普通 AUTO 不自动启动浏览器。
-
-## 0.5.0 版本检查与安装
-
-应用新增一条与题目分析分离的外网路径：启动、返回可见界面及前台计时读取固定项目的公开 GitHub Releases。它不经过 LLM SDK，不发送模型 Key、模型配置、题目、答案、截图或本机 UI Token。只有点击下载才获取安装包；离线 Demo 无模型请求，但桌面 App 的自动检查仍可能访问 GitHub。CLI Doctor 与固定题目协议不因此增加模型请求。
-
-版本按 major/minor/patch 数值与 alpha/beta/rc 阶段比较，不按 GitHub 创建时间或字符串排序；已发布测试版可参与选择，draft 和不高于当前的版本被排除。资产名称与固定仓库地址匹配，API digest、实际大小及 SHA-256 必须一致；存在 SHA256SUMS.txt 时先核对清单 digest，再交叉核对目标记录。下载仅经 HTTPS 与受限官方资产地址，跳转次数和响应/安装包大小均有限制。参考 [GitHub Releases API](https://docs.github.com/en/rest/releases/releases) 和 [Release assets API](https://docs.github.com/en/rest/releases/assets)。
-
-Windows `UpdateManager` 的后台线程不持有 RuntimeSettings 或 Key；下载、解压目录位于本机 AppData 受控位置。只对打包 EXE 提供安装切换，源码运行保留手动下载入口。更新 ZIP 检查原始文件名、防目录逃逸和名称别名，限制解压预算。helper 等旧进程结束后启动新版，确认其原生窗口的版本/PID 回执，再更新桌面快捷方式；旧程序目录与配置保留。
-
-Android 使用独立的 UpdatePolicy / UpdateHttp，不从 Provider 连接复用认证信息。Activity 在前台持有更新任务，后台悬浮服务不执行检查；APK 只写私有缓存。安装前再次验证摘要、包名、版本与当前签名，并由只读临时 URI 交给系统安装器；授权和安装仍由用户确认。更新文件落盘不改变截图不落盘的规则。具体操作与边界见 [Windows](WEB_UI.md)、[Android](ANDROID.md) 和 [Privacy](../PRIVACY.md)。
+这里记录题目与答案的字段约束、归一化和输入适配器行为。运行路径和更新机制见 [架构](ARCHITECTURE.md)。
 
 ## 数据结构与一致性策略
 
@@ -41,41 +31,19 @@ Android 使用独立的 UpdatePolicy / UpdateHttp，不从 Provider 连接复用
 
 单选和多选至少两个选项，判断题恰好两个；index 是唯一非负整数，可以不连续，非空 label 不能重复。单选/判断答案必须有 selected_index 和 selected_text。confidence 为 0～1 的有限数字，short_reason 最长 200 字符。
 
-QuestionType 包含 single_choice、multiple_choice、true_false、fill_blank、short_answer，0.4.0 五种均接入求解；解答、计算和论述归入 short_answer。SourceType 保持 DOM、VISION、MANUAL。多选使用 selected_indices、selected_labels、selected_texts 三个等长数组；单选/判断保留原单值字段。填空只用 blank_answers 且长度精确匹配 Question.blank_count（1～20），简答/解答只用 answer_text（1～12000字符），两类主观题 options=[]，主客观答案字段不能混用。short_reason 始终只是最多200字符的简要说明。
+QuestionType 包含 single_choice、multiple_choice、true_false、fill_blank、short_answer，五种均可进入求解；解答、计算和论述归入 short_answer。SourceType 保持 DOM、VISION、MANUAL。多选使用 selected_indices、selected_labels、selected_texts 三个等长数组；单选/判断保留原单值字段。填空只用 blank_answers 且长度精确匹配 Question.blank_count（1～20），简答/解答只用 answer_text（1～12000字符），两类主观题 options=[]，主客观答案字段不能混用。short_reason 始终只是最多200字符的简要说明。
 
 `validate_answer_against_question` 以原 Question 为事实来源：题型、index、label、text 必须一致。index 按选项标识查找，而不是当作数组下标。对不存在的 index、错误 label/text 一律报 AnswerValidationError，**不自动纠正**，因为修正可能掩盖模型实际选错选项的问题。
 
 无字母选项的 label 和 selected_label 都为 null，绝不生成 A/B/C/D。`format_answer` 有 label 时显示“答案：A”，没有 label 时显示实际文本，保留内部 index/text。
 
-## Provider 架构
+## 模型响应解析
 
-以下为保留的文本 Demo 流程；Vision 使用同一 Provider 的 analyze_image 方法，共用 SDK 请求、错误映射和解析基础设施。
+`llm/prompts.py` 集中管理文本和图片分析的 JSON 提示词。`llm/parsing.py` 接受完整 JSON 对象、完整 JSON 代码围栏或前后附合计不超过 200 字符的说明文字。多个对象、重复键、数组包装和非法数字会被拒绝。兼容接口使用 Chat Completions，无须服务端提供 `response_format` 或 JSON Schema 能力。
 
-```text
-F8 → TaskRunner（Lock / debounce / BUSY）
-   → demo.py（固定 MANUAL Question）
-   → BaseLLMProvider.answer_question
-      ├─ FakeLLMProvider：离线预置答案，仅接受内置示例题
-      └─ OpenAICompatibleProvider：官方 SDK 文本请求
-   → JSON 解析 → AnswerResult → Question 一致性验证
-   → format_answer / 控制台 → READY
-```
+Windows SDK 关闭自动重试，每次调用结束关闭客户端。认证、限流、超时、断网和协议错误各有固定提示。超时设置约束网络阶段，实际总等待时间还取决于 DOM 题数和连接过程。
 
-- `main.py`：源码启动入口。
-- `config.py`：热键配置与独立的 LLMConfig，真实 Provider 按需加载，SecretStr 隐藏 Key 的打印表示。
-- `app.py`：生命周期和单工作线程，增加同步 prepare 在日志前记录目标，已知业务错误展示固定消息，未知异常隐藏原始内容后恢复。
-- `hotkeys.py`：保持上一阶段 Windows 原生注册/注销与 MOD_NOREPEAT。
-- `schemas.py`：数据定义、业务一致性验证和答案显示。
-- `demo.py`：保留固定 MANUAL 题目的文本集成。
-- `llm/base.py`：answer_question 文本接口、默认拒绝的 analyze_image 能力及少量错误类型。
-- `llm/prompts.py`：集中管理 Text 与 Vision 的 JSON 协议提示词。
-- `llm/parsing.py`：解析完整 JSON、完整 json 代码围栏、前后合计不超过 200 字符的说明文字；拒绝多对象、重复键、数组包装、非法数字或不可恢复输出。
-- `llm/openai_compatible.py`：base_url、超时、错误映射与资源关闭；不要求 response_format/json_schema 等高级服务端能力。
-- `llm/fake.py`：只服务固定示例，不能用于推理任意问题。
-
-SDK 关闭自动重试，以免重复请求和扩大退出等待；每次调用结束都会关闭客户端。API 认证失败、限流、超时、断网和协议错误转换成清晰异常。真实请求期间 ESC 会停止接受新任务，等待当前同步请求结束/超时，再清理退出；超时是网络阶段超时，不是绝对总时长上限。Fake 模式的等待可立即中断。
-
-## Vision Mode（Milestone 6）
+## 窗口截图与视觉响应
 
 ```text
 F8 → Lock / debounce → 立即记录前台 HWND、进程标识与物理边界
@@ -112,11 +80,11 @@ VisionAnalysisResult 结构：
 }
 ```
 
-Vision 强制 source_type=VISION，index 按视觉顺序从 0 连续编号，复用严格 label/text/index 一致性校验。图中圆圈不视为字母标签。0.4.0 Prompt 按屏幕阅读顺序返回所有完整可见的五种题型，最多 10 道，顶层 results 数组每项独立包含 question/answer；旧单题响应继续兼容。整批校验通过后原子发布，任一题答案矛盾或填空数量不匹配会拒绝整批；没有完整可读题时返回固定错误。结构一致并不证明图片识别、知识答案或推导正确，需人工核对。
+Vision 强制 source_type=VISION，index 按视觉顺序从 0 连续编号，复用严格 label/text/index 一致性校验。图中圆圈不视为字母标签。视觉提示词要求按屏幕阅读顺序返回所有完整可见的五种题型，最多 10 道，顶层 results 数组每项独立包含 question/answer；旧单题响应继续兼容。整批校验通过后原子发布，任一题答案矛盾或填空数量不匹配会拒绝整批；没有完整可读题时返回固定错误。结构一致并不证明图片识别、知识答案或推导正确，需人工核对。
 
 `vision.py` 串联截图与 Provider；`supports_vision=false` 在截图与请求前报错。BUSY 时不会记录新的目标、截图或并发发请求。ESC 阻止新任务；已经进行的同步 API 请求需等待完成/超时，随后丢弃待显示答案并清理退出。
 
-### Adapter 与线程归属
+## DOM 提取与选项解析
 
 ```text
 F8 → TaskRunner Lock / debounce → EXTRACTING
@@ -130,24 +98,9 @@ F8 → TaskRunner Lock / debounce → EXTRACTING
 
 选项按 DOM 顺序从 index=0 编号。`A. 巴黎`、`A、巴黎`、`A．巴黎`、`(A) 巴黎` 提取明确前缀；仅空格形式 `A 巴黎` 要求全组选项存在连续 A/B/C… 佐证。无法确定时保留完整文本和 label=null，`C`、`C language` 不擅自拆成字母标签。普通 radio 推断 single_choice，checkbox 推断 multiple_choice，两项明显“正确/错误”等 radio 推断 true_false；显式题型标记冲突则报错。
 
-### 范围、隐私与测试
+### 支持范围
 
-受管理 DOM Adapter 读取主文档中有可靠语义的题组；普通浏览器扩展另支持有限的同源 iframe / open Shadow DOM 遍历，不绕过跨域或 closed Shadow 边界。提取会检查视口完整性，但不能理解所有遮挡、CSS 背景图或自绘内容；主观题包含必要 Canvas、图片或 SVG 等题图时拒绝只取文字。强制 dom 模式遇到无题、缺失条件、题组歧义或连接失效时返回 BrowserExtractionError，任务恢复 READY，不回退。五类题都进入现有 Text Provider；主观题还需要明确题型与空数。AUTO 的严格回退规则见 [Architecture](ARCHITECTURE.md)。
-
-DOM 提取不读取 Cookie、浏览器存储、密码/input value、已填 textarea / contenteditable 内容、认证请求头或整页源码。只将局部结构化题干、题型、选项和填空数量交给既有 Provider；页面/底层异常不会原样写入日志，未记录 URL、标题或 profile。控制台显示题干和答案，工作台题目记录只在内存中保留，不写截图或题目历史文件。
-
-`test_browser.py` 用真实 headless Chromium 验证四题、无专用属性、ARIA、动态渲染、隐藏内容排除、歧义/关闭/断连及线程清理。`test_dom.py` 验证真实 DOM→Fake/SDK MockTransport、错误后 READY/再次触发、BUSY/退出、入口清理及默认 Vision 保持。测试中仅为模拟用户翻题而点击导航按钮，生产提取代码没有点击操作。完整测试需先安装 Chromium，原有 Windows 热键测试仍需无其他实例占用 F8/ESC。自动测试不代表物理热键与可见界面人工验收已完成。
-
-参考：[Playwright Python 安装和线程说明](https://playwright.dev/python/docs/library)、[浏览器 runtime](https://playwright.dev/python/docs/browsers)、[页面 JavaScript 求值](https://playwright.dev/python/docs/evaluating)。
-
-### Canvas 导航修复（M9 人工验收）
-
-旧会话使用同步 Playwright + 按需执行的线程池：READY 时线程不运行 Playwright 事件循环，手动点击 Canvas 链接产生的导航被 route 拦截后一直等待 Python 放行。此前测试直接调用 goto，恰好驱动了事件分发，未覆盖空闲时的手动导航。两个 file:// 文件的允许规则和 Canvas 内联脚本本身正确，页面不存在“加载中”占位文本替换逻辑。
-
-修复让浏览器专用线程持续运行 asyncio 事件循环，并使用异步 Playwright 处理 route；没有添加轮询 sleep、延长 timeout 或放宽文件允许列表。Router、F8/ESC、Schema 和 Provider 行为不变。`test_idle_navigation.py` 在浏览器中安排稍后点击真实导航链接，随后完全不调用 Playwright，验证独立完成 load、readyState=complete、完整题干/四个选项绘图，以及返回 DOM。Windows 冒烟测试也改为这条点击路径，并通过 TaskRunner 验证 DOM→Canvas fallback→DOM。
-
-重新验收需先 ESC 退出旧实例，再在 AUTO 模式使用 main.py --open-demo 启动；在 READY 时手动打开 Canvas，无需再按 F8“解卡”，应直接显示完整行星题。随后 F8 应 DOM unavailable→Fallback: VISION；手动返回 DOM 后 F8 应 Input: DOM。真实 Vision 验收仍需启用图像能力的模型；Fake 不支持图片。自动测试只用合成图片和 Mock Provider。
-
+受管理 DOM 适配器读取主文档中有可靠语义的题组。普通浏览器扩展另支持有限的同源 iframe 和开放 Shadow DOM。提取会检查视口完整性，但可能无法判断 CSS 背景图、遮挡或自绘内容是否属于题意。主观题有必要的 Canvas、图片或 SVG 材料时，提取会拒绝只取文字。填空还需要可靠的空数和题型，作答框的已有内容不会被读取。[架构](ARCHITECTURE.md) · [隐私说明](../PRIVACY.md)。
 
 ### 答案协议与规范化
 
@@ -171,11 +124,3 @@ multiple_choice 使用非空、无重复的 selected_indices，以及等长且�
 先用 Schema 拒绝空选择、重复索引、数组长度不一致及单值/多值混用，再以 Question 为事实来源核对每个 index、label、text。原 label=null 时不能生成字母。全部一致后才按 Question.options 中的顺序规范化：例如 [3,0,1] 及其正确对应的标签/文本变为 [0,1,3]；不是按 index 数字排序，也不会根据错误文本猜答案。校验函数返回规范化后的新答案，原输入保持不变；文本和 Vision 工作流都使用该返回值。
 
 显示规则：有字母多选显示“答案：A、B、D”，无字母显示“答案：Python、C、Java”；混合标签时每项分别使用其真实 label 或 text。判断题显示“答案：正确”，有真实 A 标签则显示“答案：A”。
-
-### Text / Vision / AUTO
-
-Text 和 Vision 共用题型答案协议提示词，要求只返回 JSON、只能选择已有选项、保持 null 标签、多选返回全部认为正确的选项且不预设至少两项。Vision 一次图像请求同时提取 Question 并给出答案：checkbox/明确多选识别为 multiple_choice，明显判断题识别为 true_false，保留来源 VISION。
-
-DOM 的多选/判断现在直接送入现有 answer_question。AUTO 仍仅在 acquisition failure 时 fallback；任何题型的 Provider、JSON、答案结构或一致性错误都 ERROR→READY，不能再次请求 Vision。DOM 成功时不截图。结构校验不能证明模型知识判断正确，仍需人工核对。
-
-0.4.0 的主观题 DOM 提取仅接受题型与题组明确、填空数量可靠的页面，不读取作答框的内容。题组内可见题图、Canvas、SVG 等会使 DOM 获取失败，AUTO 转 Vision，以免漏掉必要材料。没有语义标记的 CSS 背景图仍可能无法判断是否属于题意；遇到这类页面请选 Vision 并核对材料完整性。

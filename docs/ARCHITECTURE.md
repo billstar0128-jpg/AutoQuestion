@@ -1,4 +1,4 @@
-# Architecture
+# 技术架构
 
 ```text
 main.py → cli → configuration / Setup → app
@@ -11,17 +11,17 @@ ESC / Ctrl+C → stop new tasks → join worker → close browser → exit
 
 热键在主线程注册与注销，prepare 在任何任务日志前同步记录 F8 目标。TaskRunner 只允许一个 worker，不排队。Provider 同步请求有超时、无自动重试；退出等待当前请求结束/超时，丢弃迟到答案，不能保证瞬时取消。
 
-## Input and browser lifecycle
+## Windows 输入与浏览器生命周期
 
 普通 AUTO / DOM 不创建 BrowserSession、Playwright driver 或 Chromium 子进程。`app.py` 只在 open-demo 请求时分配受管理会话。AUTO / DOM 启动本机 BrowserBridge；Vision / 固定 demo 不启动 bridge。端口不可用不阻止 AUTO 的 Vision。
 
-受管理 BrowserSession 的专用 asyncio 线程始终泵事件；用锁串行执行跨线程操作。只允许两个内置 file:// Demo，阻止其他页面请求、不接管个人 profile。其构造函数本身仍启动事件线程，所以无浏览器启动路径必须连对象都不创建。清理先 join worker，再关闭 Chromium/Playwright，停止 event loop 并 join 会话线程。
+受管理 BrowserSession 的专用 asyncio 线程持续处理导航和路由事件，即使处于 READY 空闲期。否则点击 Canvas 链接后，导航可能因等不到路由处理而挂起。跨线程操作用锁串行执行。只允许两个内置 file:// Demo，阻止其他页面请求、不接管个人 profile。其构造函数本身仍启动事件线程，所以无浏览器启动路径必须连对象都不创建。清理先 join worker，再关闭 Chromium/Playwright，停止 event loop 并 join 会话线程。
 
 AUTO 依次核对本次浏览器 PID、唯一 HWND、唯一 Page、页面焦点与可见性；歧义不读后台 DOM。取题前后核对窗口，Vision 截图前后再次核对。只有 BrowserExtractionError / 无会话 / 无效 DOM Question 可 fallback。Provider、认证、超时、JSON 或答案校验失败不会转成第二次 Vision 请求。
 
 严格 DOM 同样要求前台目标匹配，支持受管理 Demo 与普通浏览器扩展；桌面窗口或提取失败报错，不 fallback。Vision 不读 DOM，即使用户打开了 Demo。固定 demo 只使用 MANUAL 示例题。
 
-## General Browser DOM — 0.2.0
+## Chrome / Edge 扩展与本机桥接
 
 F8 prepare 在日志前保存 HWND/PID/物理边界，用 QueryFullProcessImageNameW / GetProcessTimes 保存可执行路径与进程创建时间。BrowserClassifier 仅按可执行文件 basename 识别 chrome.exe/msedge.exe，不猜标题。受管理 PID 优先；其他桌面进程直接 Vision，不尝试 DOM。
 
@@ -37,7 +37,7 @@ F8 prepare 在日志前保存 HWND/PID/物理边界，用 QueryFullProcessImageN
 
 参考：[activeTab](https://developer.chrome.com/docs/extensions/develop/concepts/activeTab)、[MV3 WebSocket](https://developer.chrome.com/docs/extensions/how-to/web-platform/websockets)、[websockets server](https://websockets.readthedocs.io/en/15.0.1/reference/sync/server.html)、[Windows TCP ownership](https://learn.microsoft.com/en-us/windows/win32/api/iphlpapi/nf-iphlpapi-getextendedtcptable)。
 
-## Provider profile and protocol
+## 模型配置与协议
 
 ```text
 Provider Profile (brand / editable defaults)
@@ -47,13 +47,13 @@ Provider Profile (brand / editable defaults)
 
 注册表与适配器分离。真实请求是 Chat Completions，使用官方 OpenAI Python SDK 的 base_url；Text 与 Vision 共用错误处理、有限 JSON 解析与一致性验证。Vision 一次图片请求返回 1～10 个独立 Question/Answer（results 数组），不追加文本请求；兼容旧单题对象。DOM 分别调用 Text Provider，全部验证后一次发布，失败不再转 Vision。Model supports_vision 是本次模型配置，不是品牌属性。
 
-0.4.0 将 `fill_blank` 与 `short_answer` 接入完整流程。主观题 `options=[]`；填空的 `blank_count` 为 1～20，答案用 `blank_answers` 且严格匹配空数；简答/解答用 `answer_text`（最多 12000 字符）。主观答案不能包含选项字段，客观答案不能混入主观字段。`short_reason` 仍为最多 200 字符的简要说明，不代替主观正文。复制以界面主动事件为边界，纯文本直接进入系统 Clipboard；不增加自动输入或页面写操作。
+文本与图片模式均支持单选、多选、判断、填空、简答和解答。同屏多题在整批通过校验后展示。[题目协议与字段约束](TECHNICAL_NOTES.md)。
 
 ## Android
 
 原生 Java App 使用独立的 HTTPS Chat Completions 客户端，共用同屏多题 JSON 协议，不依赖 Windows 服务。悬浮服务待机时不持有屏幕共享。普通模式经用户授权后创建 MediaProjection，取到一帧立即释放 VirtualDisplay、ImageReader 和 MediaProjection。Android 11 及以上启用录屏兼容后，单帧捕获改用用户启用的 AccessibilityService，复用同一图像上传流程。Android Keystore 保存加密密钥，截图和答案只在内存中。停止服务会移除悬浮窗并取消捕获或模型请求。完整操作与系统限制见 [Android](ANDROID.md)。
 
-## Application updates — 0.5.0
+## 应用更新
 
 版本检查是独立于 F8 / Provider 的公开 HTTPS 路径，不携带模型配置、Key、题目、答案、截图或本机 UI 会话令牌。两端读取固定 `billstar0128-jpg/AutoQuestion` 的 Releases 列表，不使用会排除测试版的 latest 端点；排除 draft，按数值版本与 alpha/beta/rc 阶段顺序选择更高且适用的平台包。检查失败不阻断答题，下载和安装均由用户主动操作。
 
@@ -65,7 +65,7 @@ Android Activity 持有独立 UpdateManager，不由悬浮捕获服务轮询。�
 
 只有安装包和公开更新元数据会写入更新目录/缓存，截图的内存处理策略不变。0.4.0 及更早版本没有更新模块，需要手动安装一次新版本。用法见 [Windows](WEB_UI.md)、[Android](ANDROID.md)，网络披露见 [Privacy](../PRIVACY.md)。
 
-## Configuration and secrets
+## 配置和凭据
 
 Process environment > explicit `--env-file` > saved AppData config > defaults。不会自动加载 `.env`。Config 的兼容默认仍为 fake/vision；无完整配置的交互首次启动由 Setup 接管，API 向导推荐 AUTO。
 
@@ -73,7 +73,7 @@ UserConfig 只含非秘密字段与凭据引用。Key 优先来自显式配置�
 
 凭据更新为 copy-on-write：先创建新安全引用，再原子替换普通配置；失败回收本次新引用，保留旧凭据。Doctor/show-config 只检查元数据，正常启动才读取选定 Key。更完整的限制见 [Security Model](SECURITY_MODEL.md) 和 [Configuration](CONFIGURATION.md)。
 
-## Source map
+## 源码模块
 
 | Module | Responsibility |
 |---|---|
@@ -89,4 +89,4 @@ UserConfig 只含非秘密字段与凭据引用。Key 优先来自显式配置�
 | Android UpdatePolicy / UpdateHttp / UpdateManager / UpdatePackageProvider | 版本与下载约束、APK 验证和系统安装交付 |
 | doctor / secret_safety | 本地只读诊断，无业务副作用 |
 
-实现边界、Schema 细节与演进记录见 [Development](DEVELOPMENT.md)。
+源码运行、目录和已有检查见 [开发与源码运行](DEVELOPMENT.md)。

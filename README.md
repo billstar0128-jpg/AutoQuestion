@@ -1,397 +1,81 @@
-# AutoQuestion/自动答题神器
+# AutoQuestion — 跨平台屏幕题目 AI 解析助手
 
-（写在最前面：制作不易，如果你觉得有用，请点一个star吧）
+[![Windows CI](https://github.com/billstar0128-jpg/AutoQuestion/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/billstar0128-jpg/AutoQuestion/actions/workflows/ci.yml)
+[![Android CI](https://github.com/billstar0128-jpg/AutoQuestion/actions/workflows/android.yml/badge.svg?branch=main)](https://github.com/billstar0128-jpg/AutoQuestion/actions/workflows/android.yml)
+[![License: Apache-2.0](https://img.shields.io/github/license/billstar0128-jpg/AutoQuestion)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/billstar0128-jpg/AutoQuestion?include_prereleases&label=GitHub%20Release)](https://github.com/billstar0128-jpg/AutoQuestion/releases)
 
-**[⬇ 下载 Windows 程序包（含 AutoQuestion.exe）](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.6.0/AutoQuestion-0.6.0-Windows-x64.zip)**
+AutoQuestion 在 Windows 和 Android 上读取屏幕里的练习题，调用你配置的 AI 模型给出参考答案和解题说明。适合自建题库、非计分练习和经授权的学习场景。Windows 可从已授权的浏览器页面读取题目结构，或让支持图片的模型分析前台窗口；Android 通过悬浮窗发起截图识题。
 
-完整解压 ZIP → 双击 AutoQuestion.exe，无需安装 Python；保留 `_internal` 文件夹。GitHub 的 **Code → Download ZIP 是源码**，普通使用请点上面的程序包。
+## 下载
 
-[手机 Android 0.6.1 APK](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.6.1/AutoQuestion-0.6.1-Android.apk) · [Android 使用说明](docs/ANDROID.md)
+| 平台 | 当前公开版本 | 下载与使用说明 |
+| --- | --- | --- |
+| Windows x64 | [0.6.0 · 预发布](https://github.com/billstar0128-jpg/AutoQuestion/releases/tag/v0.6.0) | [下载 ZIP](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.6.0/AutoQuestion-0.6.0-Windows-x64.zip) · [Windows 使用说明](docs/WEB_UI.md) |
+| Android 8.0 及以上 | [0.6.1 · 预发布](https://github.com/billstar0128-jpg/AutoQuestion/releases/tag/v0.6.1) | [下载 APK](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.6.1/AutoQuestion-0.6.1-Android.apk) · [Android 使用说明](docs/ANDROID.md) |
 
-**题目在屏幕上，F8 一按，答案出来。**
+两端独立编号。上表是 GitHub 已公开的安装包，均标为 Pre-release。Android 0.7.0 是尚未发布的本地验收版。
 
-最开始它只是我为了省掉“截图 → 上传 → 问模型”这一串重复操作写的小工具，后来慢慢补上了 Vision、DOM、AUTO 路由、多选/判断题、首次配置向导和安全的 API Key 存储。
+## 三步开始使用
 
-现在它可以常驻在 Windows 后台。你把 WPS、PDF、记事本或其他题目窗口放到前台，按 F8，它会调用你自己配置的模型分析当前题目；处理完以后回到 READY，等下一题。
+1. **下载安装。** Windows 右键 ZIP 选择“全部解压”，保留 `_internal` 文件夹，双击 `AutoQuestion.exe`。Android 打开 APK，按系统提示允许当前下载来源安装应用。
+2. **配置模型。** Windows 打开“模型与配置”，Android 在首页填写配置。用服务商控制台创建的 API Key，填写 Base URL 和 Model ID。Android 和 Windows 截图模式都需要支持图片输入的模型。[API 配置指南](docs/API_SETUP.md)
+3. **开始识题。** Windows 启动识题后，将完整题目放到前台窗口并按 **F8**，按 **Esc** 停止。Android 开启悬浮窗权限，显示 AQ 小方框，点一下并按提示共享屏幕。在 AQ 面板查看结果。
 
-支持 DeepSeek、Kimi、GLM、OpenAI 和自定义 OpenAI-compatible API。没有自己的服务器，没有遥测，也不会替你点击或提交答案。
+没有题目可试时，可以打开[公开练习页](https://billstar0128-jpg.github.io/AutoQuestion/try-questions.html)。使用真实模型识别练习页也可能产生服务商 API 费用。
 
-**0.1.0rc1 还是第一个公开 Release Candidate。** 如果你愿意测试，遇到难装、难懂、识别失败或者任何反直觉的地方，Issue 比“能跑”更有价值。
+## 核心功能
 
-当前 Windows 版本为 **0.6.0**。工作台可收成约 80×80 的 AQ 方框，点击展开答案和解题说明，保留选择与复制，并支持日间、深色主题。配置、配对和更新放在“模型与配置”，操作说明放在“开始使用”，工作台不再邀请体验离线 Demo。上面的介绍保留首次公开 RC 的背景。
+- **结构化读取。** Windows 可用已配对的 Chrome / Edge 扩展读取授权页面上的可见题干与选项。DOM 读取成功时仅发送题目文本。
+- **多模态识别。** Windows 可识别前台的 PDF、Office 文档和其他桌面窗口。Android 可分析屏幕截图，Android 11 及以上可按需开启录屏兼容。受保护的内容可能无法捕获。
+- **同屏多题。** 支持单选、多选、判断、填空、简答和解答题。AQ 面板逐题展示结果，支持复制。
+- **多模型接入。** 可配置 DeepSeek、Kimi、GLM、OpenAI 或其他兼容 OpenAI Chat Completions 的服务。
 
-**电脑：[下载 Windows App](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.6.0/AutoQuestion-0.6.0-Windows-x64.zip) → 完整解压 → 双击 AutoQuestion.exe。** 不需要 Python 或 PowerShell。在 App 的独立窗口中配置模型和 API Key，保存后启动答题。请保留 _internal 文件夹。详见 [App 使用说明](docs/WEB_UI.md)。[网站首页](https://billstar0128-jpg.github.io/AutoQuestion/) 是下载入口，配置在本机 App 内完成。
+## 推荐模型及 API 配置
 
-**手机：[下载 Android 0.6.1 APK](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.6.1/AutoQuestion-0.6.1-Android.apk)**，适用 Android 8.0 及以上。配置支持图片的模型并允许悬浮窗后，轻点 AQ 并确认系统屏幕共享即可识题。Android 11 及以上可选择开启录屏兼容，边录屏边识题。截图只在内存中处理。安装、操作和小米权限说明见 [Android 使用说明](docs/ANDROID.md)。
+截图识题可从官方明确支持图片的模型开始。API Key 是服务商用来验证请求和计费的密钥，按服务商要求开通 API 计费或充值，仅填入本机 App。
 
-已装 Android 0.5.0 的用户打开主界面即可自动检查 0.6.1，也可手动点“检查更新”。下载后点“安装已下载更新”，再由系统确认覆盖安装。0.4.0 及更早版本可直接下载 APK 覆盖安装，保留已有配置和 Key。Windows 手动更新时完整解压新包后运行，AppData 中的配置会保留。
+| 服务 | Base URL | 可选 Model ID |
+| --- | --- | --- |
+| DeepSeek | `https://api.deepseek.com` | [`deepseek-flash`](https://api-docs.deepseek.com/guides/vision/) |
+| Kimi / Moonshot（中国平台） | `https://api.moonshot.cn/v1` | `kimi-k3.1-pro` |
+| 智谱 / GLM | `https://open.bigmodel.cn/api/paas/v4/` | `glm-5.3-flash` |
+| OpenAI | `https://api.openai.com/v1` | [`gpt-6-luna`](https://developers.openai.com/api/docs/models/gpt-6-luna) |
 
-## What it does
+模型示例来自官方接口文档，实际可用性取决于账户权限。获取 Key、选择图片模型和查看官方价格的步骤见 [API 配置指南](docs/API_SETUP.md)。
 
-用于自建题库、本地 Demo、非计分练习、调查问卷和获得授权的学习场景。模型可能答错，结构校验不能代替人工核对。
+## 技术架构
 
-- Windows 常驻 F8 / ESC，支持 BUSY 和 debounce；同屏多题按顺序分别显示，单次最多 10 道。
-- 三到六道混合客观与主观题也可分别回答；Windows 首次配置等待 180 秒，可调到 300 秒，Android 最长读取等待 180 秒。
-- 支持单选、多选、判断、填空、简答与解答，保留无字母选项的实际文本，答案可选择、复制。
-- 前台窗口 Vision、可选 Chrome / Edge 扩展 DOM、受管理本地 Demo DOM、AUTO 路由和无 Key 的 Offline Demo。
-- 首次设置向导、Provider Profiles、Windows Credential Manager、session-only Key 和本地 Doctor。
-- 启动、回到前台及前台每 15 分钟检查 GitHub 更新，包含已发布测试版；下载和安装仍由你主动点击。
-- 不会自动选择、点击、提交或翻到下一题。
+Windows 使用 Python。AUTO 模式在已配对且获授权的 Chrome / Edge 页面上优先读取 DOM（网页结构），取题失败时可回退为前台窗口截图。其他桌面窗口直接走截图模式。扩展经本机回环连接与应用通信。
 
-## 应用更新
+Android 使用原生应用，公开版通过系统屏幕共享或可选的录屏兼容服务捕获图像。两端直接向用户指定的模型接口发送输入并解析结果。[架构文档](docs/ARCHITECTURE.md)
 
-0.5.0 起，App 会检查本项目公开的 GitHub Releases。发现更高且可校验的版本后显示更新入口，不会静默安装。校验不通过、断网或 GitHub 限流时保留当前版本，原有答题继续可用。
+## 隐私与使用边界
 
-Windows 在“模型与配置”的应用更新区域点击“下载更新”，校验完成后先停止答题，再点击“安装并重启”。新版解压到独立目录，确认新窗口启动后更新桌面快捷方式，原版本文件和 AppData 配置保留；以后从桌面快捷方式打开新版。源码运行只提供检查与手动下载 App 的入口，不会覆盖源码目录。详见 [Windows 更新说明](docs/WEB_UI.md)。
+- 应用无需项目运营的服务器。题目文本或截图会发送至你配置的模型服务商，服务商的数据处理与保留规则适用。
+- 应用在内存中处理截图。Windows 可选择凭据管理器或仅本次使用，Android 使用基于 Android Keystore 的加密存储。
+- 应用会访问 GitHub 查看公开版本。下载和安装应用更新需要你的操作。
+- 请先确认有权读取和发送屏幕内容。应用不会点击、提交或翻题。AI 可能漏题或答错，请核对解题过程和结果。
 
-Android 在主界面下载更新，校验后点击“安装已下载更新”；按系统提示允许此应用安装更新并确认。请用同签名安装包覆盖安装，不用卸载。下载期间留在主界面，切换到其他应用会取消正在执行的更新；悬浮识题期间不在后台检查更新。详见 [Android 更新说明](docs/ANDROID.md)。
+详见[隐私说明](PRIVACY.md)和[安全政策](SECURITY.md)。
 
-更新请求只读取 GitHub 的公开版本信息，不附带模型 API Key、题目、答案、截图或本机会话令牌；GitHub 仍会收到正常 HTTPS 请求信息。离线 Demo 不调用模型，但 App 的版本检查仍会访问 GitHub；断网不影响预置 Demo。详细边界见 [Privacy](PRIVACY.md)。
+## FAQ
 
-## Quick Start
+- **安装包打不开或 APK 无法覆盖安装？** 先核对系统要求与安装包来源，同签名 APK 才能覆盖安装。
+- **模型配置失败或手机识别时黑屏？** 检查 Key、额度、Model ID、图片能力和屏幕共享范围。系统保护的页面可能无法捕获。
+- **为什么网页从 DOM 回退到截图？** AUTO 取不到可靠题目结构时会尝试截图。检查扩展配对、站点授权和页面内容。
 
-普通用户使用上面的 Windows App。以下为源码安装方式，原有 [AutoQuestion.pyw](AutoQuestion.pyw) 与命令行入口继续保留。
+安装、识别失败、更新和隐私问题详见 [常见问题](docs/FAQ.md)。
 
-准备标准 **Windows CPython**，不要使用 MSYS2/MinGW Python。最低版本是 Python 3.10；本机使用 **CPython 3.14.6**。历史 0.1.0rc1 的 Windows GitHub CI 已通过 **3.10.11 / 3.12.10 / 3.14.7**；本轮 0.2.0 的 [Windows GitHub CI](https://github.com/billstar0128-jpg/AutoQuestion/actions/runs/36295257899) 已通过 Python **3.10 / 3.12 / 3.14**。CI 跳过交互桌面测试；受管理窗口自动 smoke 已在本机通过，Chrome / Edge 人工 GUI 验收由用户明确决定留作发布后非阻断跟进。
+## 开发者文档
 
-从 [GitHub 仓库](https://github.com/billstar0128-jpg/AutoQuestion) 取得完整源码，在项目根目录打开 PowerShell。
+- [从源码运行、PowerShell 入门和构建](docs/DEVELOPMENT.md)
+- [浏览器扩展安装与配对](docs/BROWSER_DOM_SETUP.md)
+- [高级配置](docs/CONFIGURATION.md) · [技术架构](docs/ARCHITECTURE.md) · [安全模型](docs/SECURITY_MODEL.md)
+- [贡献指南](CONTRIBUTING.md) · [变更记录](CHANGELOG.md) · [发布检查清单](docs/RELEASE_CHECKLIST.md)
 
-```powershell
-git clone https://github.com/billstar0128-jpg/AutoQuestion.git
-cd AutoQuestion
-python -m venv .venv-win
-.\.venv-win\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv-win\Scripts\python.exe main.py
-```
+## License
 
-无需激活虚拟环境。普通 AUTO、Vision 和固定 Offline Demo 不需要安装 Chromium runtime；本地 DOM Demo 才需要，见下节。
+AutoQuestion 的 Windows、Android 和浏览器扩展完整源码按 [Apache-2.0](LICENSE) 开放。
 
-## 源码安装（详细步骤）
-
-以下步骤适用于从源码运行。普通用户请使用上面的 Windows App 下载入口，完整解压并双击 AutoQuestion.exe，无需 Python 或 PowerShell。
-
-从源码运行时，你需要先安装标准的 **Windows Python 3.10 或更高版本**。
-
-### 1. 下载 AutoQuestion
-
-在当前 GitHub 页面右上方找到绿色的 **`<> Code`** 按钮。
-
-点击它，然后选择：
-
-**Download ZIP**
-
-浏览器会下载一个类似这样的文件：
-
-`AutoQuestion-main.zip`
-
-下载完成后，右键这个 ZIP 文件，选择：
-
-**全部解压**
-
-你可以把它解压到桌面、D 盘或者其他你容易找到的位置。
-
-例如：
-
-`D:\AutoQuestion-main`
-
-解压完成后，进入这个文件夹。
-
-你现在看到的文件中应该包括：
-
-- `main.py`
-- `README.md`
-- `requirements.txt`
-- `src`
-- `tests`
-
-只要你能看到 `main.py` 和 `requirements.txt`，就说明你已经进入了正确的 AutoQuestion 项目目录。
-
-> **注意：**这里说的“项目根目录”，就是**直接放着 `main.py` 的这一层文件夹**。
->
-> 它不是 `D:\`，也不是 `D:\Projects`，更不是 `src` 文件夹。
->
-> 例如，如果你的 AutoQuestion 文件夹位于：
->
-> `D:\Projects\AutoQuestion`
->
-> 并且下面这个文件真实存在：
->
-> `D:\Projects\AutoQuestion\main.py`
->
-> 那么：
->
-> `D:\Projects\AutoQuestion`
->
-> 就是项目根目录。
-
----
-
-### 2. 在正确的文件夹里打开 PowerShell
-
-保持资源管理器停留在刚才这个**能够直接看到 `main.py` 的文件夹**。
-
-点击资源管理器顶部的地址栏，把里面原来的路径选中，然后输入：
-
-```text
-powershell
-```
-
-按 **Enter**。
-
-这时会打开一个 PowerShell 窗口。
-
-例如，你把 AutoQuestion 解压到了：
-
-`D:\Projects\AutoQuestion`
-
-那么 PowerShell 最下面应该显示类似：
-
-```powershell
-PS D:\Projects\AutoQuestion>
-```
-
-这就表示你打开的位置正确。
-
-如果显示的是：
-
-```powershell
-PS D:\Projects>
-```
-
-说明你还在 AutoQuestion 文件夹的上一层。
-
-可以输入：
-
-```powershell
-cd AutoQuestion
-```
-
-然后按 Enter。
-
-如果显示的是：
-
-```powershell
-PS D:\>
-```
-
-说明你距离 AutoQuestion 文件夹还差不止一层。
-
-总之最终应该让 PowerShell 变成类似：
-
-```powershell
-PS D:\Projects\AutoQuestion>
-```
-
-核心判断只有一个：
-
-> **PowerShell 当前所在的文件夹里，必须能够直接找到 `main.py`。**
-
-如果你不确定，也可以输入：
-
-```powershell
-dir
-```
-
-按 Enter。
-
-如果输出里能看到：
-
-- `main.py`
-- `requirements.txt`
-- `README.md`
-
-就说明你现在的位置正确。
-
----
-
-### 3. 创建 AutoQuestion 自己的 Python 环境
-
-确认 PowerShell 已经位于 AutoQuestion 项目根目录后，复制下面这一行：
-
-```powershell
-python -m venv .venv-win
-```
-
-按 **Enter**。
-
-第一次执行可能需要几秒。
-
-完成后，AutoQuestion 文件夹里会多出一个：
-
-`.venv-win`
-
-这是 AutoQuestion 自己使用的 Python 环境。
-
-**你不需要手动打开这个文件夹，也不需要激活它。**
-
----
-
-### 4. 安装运行所需的组件
-
-继续复制下面这一行：
-
-```powershell
-.\.venv-win\Scripts\python.exe -m pip install -r requirements.txt
-```
-
-按 **Enter**。
-
-程序会自动下载 AutoQuestion 运行所需要的 Python 组件。
-
-安装过程中看到大量英文输出属于正常现象，请等待命令执行结束。
-
-如果最后没有出现明显的红色 `ERROR`，通常就可以继续下一步。
-
-如果安装失败，可以把 PowerShell 最后几行报错截图下来，再到 GitHub Issue 中反馈。
-
----
-
-### 5. 第一次启动 AutoQuestion
-
-安装完成后，继续输入：
-
-```powershell
-.\.venv-win\Scripts\python.exe main.py
-```
-
-按 **Enter**。
-
-第一次运行时，AutoQuestion 会自动进入设置向导。
-
-接下来你需要配置：
-
-- AI Provider
-- API Base URL
-- Model ID
-- Vision 能力
-- Input Mode
-- API Key
-
-后续配置方法请继续阅读下面的 **First-run Setup**。
-
-
-## First-run Setup
-
-双击启动的桌面 App 在没有配置时直接进入“模型与配置”。字段旁提供服务商根地址、Model ID 示例和图片能力说明；点击模型示例即可填入，Key 通过安全凭据或仅本次模式保存。原有命令行向导也会在提问前显示相同示例。以 DeepSeek 为例，Base URL 填 `https://api.deepseek.com`，模型可以按账户选 `deepseek-flash` 或 `deepseek-v4-pro` 等；不要加 `/chat/completions`。模型列表与图片能力见 [配置示例与官方来源](docs/WEB_UI.md#第一次配置示例)。
-
-没有有效保存配置或完整显式配置时，程序进入向导。以 DeepSeek 为例：选择 Provider → 确认 API root → 填账户可调用的 Model ID → 确认这个模型的图片能力 → 选择 AUTO → 安全输入 Key → 选择 Windows Credential Manager 或 session-only → 确认保存。
-
-Base URL 是 API 根地址，例如 `https://api.deepseek.com`；Model ID 是服务商提供的模型标识，填写 `<your-current-model-id>` 对应的实际值。填反时向导会立即拒绝并重问当前字段，保留之前填好的信息。校验完全离线，不请求模型列表、不验证 Key。
-
-项目不绑定 DeepSeek，也可选择 Kimi、GLM、OpenAI 或 Custom。模型名称不预填未经验证的永久值；**只有确实支持图片输入的模型才能完成外部窗口/Canvas Vision 分析**。文本模型可选择 DOM，或接受向导的能力警告；不要只因为品牌名就启用 Vision。
-
-AUTO / Vision 保存后询问 `Open the local demo quiz now? [y/N]`：直接 Enter 不打开浏览器，进入 READY；Yes 只在本次打开 Demo。DOM 模式不再自动打开 Demo，需要时加 `--open-demo`。Offline Demo 不询问 Key，也不打开浏览器。
-
-Key 输入显示星号或完全隐藏。普通配置写入 `%APPDATA%\AutoQuestion\config.json`，Key 不进入 JSON；默认安全保存在当前 Windows 用户的 Credential Manager。session-only 下次只再询问 Key。第二次普通启动直接加载配置、进入 READY；AUTO 不弹 Demo、不重跑完整向导。
-
-进入 READY 后，将自己授权的 WPS、记事本、PDF 或其他题目窗口置于前台，按 F8，等恢复 READY 再分析下一题。真实请求发送到你配置的 Provider，可能产生其 API 费用。ESC / Ctrl+C 会停止接受任务并清理；已有同步请求需等完成或超时。
-
-## Try the Local Demo
-
-四题 Demo 包括带字母单选、无字母单选、多选、判断；另有 Canvas 行星题。它是测试和可选教程，不是程序的必经主界面。
-
-普通 Demo 的“同屏两道题”按钮可验证单选和多选分别显示。另有 [六道混合题源码](examples/browser_dom/mixed_questions.html)和[在线练习页](https://billstar0128-jpg.github.io/AutoQuestion/try-questions.html)，包含单选、多选、判断各两道，电脑或手机浏览器可直接打开后识题。六题页面不使用固定 Fake 答案，真实识题需要自己的模型。
-
-新增 [客观与主观混合题源码](examples/browser_dom/mixed_subjective.html)和[在线主观练习页](https://billstar0128-jpg.github.io/AutoQuestion/try-subjective.html)，可一起验收双空填空、简答、解方程与原客观题。得到结果后，逐空复制或复制完整解答，粘贴到你自己的记事应用核对换行。
-
-```powershell
-$env:PLAYWRIGHT_BROWSERS_PATH = '0'
-.\.venv-win\Scripts\python.exe -m playwright install chromium
-.\.venv-win\Scripts\python.exe main.py --open-demo
-```
-
-以上启动沿用有效配置。AUTO 下将 Demo 置前台按 F8，普通题显示 `Input: DOM`；手动点击“打开 Canvas 测试题”，画布应完整显示，F8 显示 `DOM unavailable → Fallback: VISION`；返回普通题后再次 F8 恢复 DOM。Canvas 需要支持图片的真实模型，Fake 不支持 Vision。ESC 关闭本次 Chromium 并释放线程/热键。
-
-无 Key 用户优先在 Setup 选择 **Offline Demo**，F8 回答固定 MANUAL 首都题，无 Chromium、无截图、无模型 API 请求。App 的 GitHub 更新检查是独立的网络请求，断网仍可使用预置 Demo。若要离线体验四道 DOM 题，可按 [高级配置](docs/CONFIGURATION.md) 临时设置 fake/dom；这些演示答案的 99% 是固定值，不是模型准确率。
-
-## Browser DOM Setup（可选）
-
-先按上面的 Quick Start 跑通 Vision 即可，扩展不是安装 AutoQuestion 的前提。
-想在普通 Chrome / Edge 中用 DOM 时，按 [扩展安装与配对](docs/BROWSER_DOM_SETUP.md) 加载 App 解压目录或源码根目录的 `extension` 文件夹。在本机工作台启动 AUTO 或 DOM 后，到“模型与配置”点击“获取本次配对码”，在扩展弹窗输入并授权当前题目站点。源码用户也可运行 `main.py --pair-browser`。
-连接成功会显示 `Browser DOM Bridge: connected`。关掉配对窗口和扩展弹窗，把题目放到前台再按 F8；成功时显示 `Input: Browser DOM`，不会截图。
-扩展未安装、当前站点未授权或题目提取不可靠时，AUTO 回退 Vision。扩展与程序均不保留配对码，重新启动程序需要重新配对。
-
-## How F8 Works: AUTO / DOM / Vision
-
-| 有效 INPUT_MODE | 普通启动 | 加 `--open-demo` |
-|---|---|---|
-| auto | 不创建浏览器；Chrome / Edge 尝试扩展 DOM，桌面窗口直接 Vision | 打开本地 Demo；前台匹配后 DOM 优先，取题失败才回退 |
-| dom | 前台 Chrome / Edge 扩展 DOM；不可用时明确报错，不截图 | 打开受管理 Demo；仍只读匹配的前台目标 |
-| vision | 不打开浏览器，只用前台窗口 Vision | 打开 Demo 供视觉测试，仍不读 DOM |
-| demo | 固定 MANUAL 文本示例，无浏览器 | 明确拒绝组合 |
-
-`--open-demo` 不修改永久 INPUT_MODE，也不与 `--setup`、`--doctor`、`--show-config`、`--reset-config`、`--version` 混用。需要重设时用 `--setup` 并在向导末尾选择本次 Demo。
-
-AUTO 先记录 F8 的 HWND、PID、可执行文件、进程创建时间和窗口边界。自有 Demo 走 Playwright；普通 Chrome / Edge 只从已配对且匹配该进程的扩展读取当前题目；WPS、PDF 阅读器、记事本和其他桌面进程直接 Vision。浏览器内 PDF、Canvas、无可靠语义控件等情况通常回退 Vision。不会接管个人 profile 或连接个人浏览器调试端口，也不保证所有网站都能 DOM 提取。
-
-DOM 成功不截图。获取题目失败才 fallback；已得到题目后的认证、网络、模型 JSON 或答案错误直接 ERROR → READY，不再追加图片请求。目标窗口切换、移动或关闭会取消捕获，不能改截其他窗口。详见 [Architecture](docs/ARCHITECTURE.md)。
-
-## Supported Providers
-
-Profile 是厂商预设，Protocol Provider 是实际请求适配器。
-
-| Profile | Protocol | 建议 API root |
-|---|---|---|
-| DeepSeek | OpenAI-compatible | `https://api.deepseek.com` |
-| Kimi / Moonshot | OpenAI-compatible | `https://api.moonshot.cn/v1` |
-| Zhipu / GLM | OpenAI-compatible | `https://open.bigmodel.cn/api/paas/v4/` |
-| OpenAI / GPT | OpenAI-compatible | `https://api.openai.com/v1` |
-| Custom OpenAI-compatible | OpenAI-compatible | 用户填写 |
-| Offline Demo | Fake | 不使用 API |
-
-已有 API root 核对依据保留：[DeepSeek](https://api-docs.deepseek.com/)、[Kimi](https://platform.kimi.com/docs/get-api-key)、[智谱](https://docs.bigmodel.cn/cn/guide/develop/openai/introduction)。真实预设可编辑地址和模型；预设可用不等于厂商所有模型都经过本项目验证。Vision 是具体 Model 的配置能力，不是品牌永久属性。
-
-Native Anthropic / Claude API **not supported in 0.6.0**。通过兼容网关调用 Claude 可以尝试 Custom，但不保证所有网关兼容。ChatGPT Plus / Pro 订阅不等于 OpenAI API Key 或 API billing balance，登录 ChatGPT App 不会自动提供 API 凭据；参见 [OpenAI API Quick Start](https://developers.openai.com/api/docs/quickstart)。
-
-## Supported Question Types / limitations
-
-完整回答协议支持 `single_choice`、`multiple_choice`、`true_false`、`fill_blank`、`short_answer`，可在同一画面混合出现；简答、解答、计算和论述题统一归为 `short_answer`。填空按识别出的空数逐空给答案（最多 20 空），主观解答显示完整正文、必要步骤和结论，单题最多 12000 字符。答案以纯文本展示，保留换行，可选择文字、复制整题或单空，再自行粘贴到其他应用；不会自动填写。
-
-Vision 一张图片一次请求，按屏幕阅读顺序返回各题；DOM 按可靠题组分别请求并校验，整批完成后显示。单次最多 10 道，不自动滚动；Vision 跳过残缺或不可读的题，DOM 无法确定完整题组时拒绝提取或由 AUTO 回退 Vision。主观 DOM 需要明确题型和题组语义；不读取输入框里已经填写的答案。界面显示识别题干、参考答案和简短理由，请核对是否漏题。无字母选项不会生成 A/B/C/D。主观题结构校验只能检查字段和空数，不能证明知识或推导正确。
-
-不支持独立 OCR、原生 Anthropic、个人浏览器调试端口接管、自动点击/勾选/提交/下一题。扩展只读用户授权页面的当前可见语义题组；跨域 iframe、封闭 Shadow DOM、自绘控件、歧义题组可能需要 Vision。没有数据库、遥测或云账户。不宣称支持所有网站、所有 AI 模型或 100% accurate。Windows 0.6.0 与 Android 0.6.1 提供便携 EXE、APK 与源码，不提供 MSI、iOS、PyPI 或独立 wheel 分发。Android 只使用 Vision；系统禁止捕获的页面可能黑屏，不能绕过。
-
-## Privacy and Security
-
-DOM 向所选 Provider 发送结构化题干和选项；Vision 发送 F8 目标窗口的可见区域图片。通知、覆盖层和标题栏也可能进入图片，请只显示你希望发送的内容。没有开发者 telemetry、analytics、crash upload、中央服务器或截图历史。
-
-Key 不进入普通 config、日志、repr 或仓库。不要上传真实 `.env`、配置、凭据导出或私人截图。若 Key 曾进入 Git history，必须撤销/轮换并清理历史，删除当前文件不够。见 [PRIVACY](PRIVACY.md)、[SECURITY](SECURITY.md)、[Security Model](docs/SECURITY_MODEL.md)。
-
-## Configuration / Doctor
-
-```powershell
-.\.venv-win\Scripts\python.exe main.py --setup
-.\.venv-win\Scripts\python.exe main.py --show-config
-.\.venv-win\Scripts\python.exe main.py --doctor
-.\.venv-win\Scripts\python.exe main.py --version
-# 需要重置时才运行；凭据清理会另行确认，默认 No。
-.\.venv-win\Scripts\python.exe main.py --reset-config
-```
-
-环境变量和显式 `--env-file` 仍可使用，优先级为 process environment > explicit file > AppData > defaults；主路径优先使用向导。详见 [Advanced Configuration / Troubleshooting](docs/CONFIGURATION.md)。Doctor 不调用 Provider、不读真实 Key 值、不截图、不注册热键；Chromium 检查仅运行隔离可回收的 headless 探针。报告前检查其中个人解释器路径。
-
-## Development / Contributing
-
-运行依赖为 pydantic、openai、mss、Pillow、python-dotenv、playwright、websockets；pytest 只在开发依赖中。安装 `requirements-dev.txt` 和 Chromium 后顺序执行：
-
-```powershell
-.\.venv-win\Scripts\python.exe -m pytest -q
-.\.venv-win\Scripts\python.exe -m unittest discover -s tests -v
-.\.venv-win\Scripts\python.exe -m compileall -q main.py src tests
-.\.venv-win\Scripts\python.exe -m pip check
-.\.venv-win\Scripts\python.exe tools/release_audit.py
-```
-
-物理桌面另测 `.\.venv-win\Scripts\python.exe -X utf8 tests/smoke_browser_window.py -v`。关闭旧实例，测试窗口需获得前台；测试不会夺取其他用户窗口或读取真实屏幕像素。CI 不运行此可见 smoke；本地完整测试默认保留原生热键测试。
-
-[Development](docs/DEVELOPMENT.md) · [Technical Notes](docs/TECHNICAL_NOTES.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) · [Release Notes](docs/RELEASE_NOTES_0.6.0.md)
-
-## License / publication state
-
-AutoQuestion 使用 **Apache License 2.0（Apache-2.0）**，完整条款见 [LICENSE](LICENSE)。
-
-**Windows 0.6.0 · Android 0.6.1 · 源码。** 历史标签保持不变。Chrome / Edge Browser DOM 有自动测试和本地合成页面测试覆盖；不代表所有真实网页均已人工验证。Android 尚未在用户的小米真机验收，权限与后台策略请按使用说明检查。
-
-[问题反馈](https://github.com/billstar0128-jpg/AutoQuestion/issues) · [Actions](https://github.com/billstar0128-jpg/AutoQuestion/actions/workflows/ci.yml) · [安全报告](https://github.com/billstar0128-jpg/AutoQuestion/security/advisories/new)
-
-本轮测试步骤见 [M15 人工验收](docs/MANUAL_ACCEPTANCE_M15.md)，发布进度见 [Release Checklist](docs/RELEASE_CHECKLIST.md)。历史结果保留在 [M14 验证记录](docs/VALIDATION_M14.md)。
+如果 AutoQuestion 对你的学习或开发有帮助，欢迎在 GitHub 点一个 Star。

@@ -1,10 +1,10 @@
-# 本机网页工作台
+# Windows 使用指南
 
-## 普通用户：下载 Windows App
+## 下载 Windows App
 
-[下载 AutoQuestion-0.6.0-Windows-x64.zip](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.6.0/AutoQuestion-0.6.0-Windows-x64.zip)，右键“全部解压”，保留 _internal 文件夹，双击 AutoQuestion.exe。无需 Python、依赖安装或 PowerShell。App 会打开独立桌面窗口；在这里可以真正输入、保存配置并运行答题。
+[下载 AutoQuestion-0.6.0-Windows-x64.zip](https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v0.6.0/AutoQuestion-0.6.0-Windows-x64.zip)，右键“全部解压”，保留 _internal 文件夹，双击 AutoQuestion.exe。无需 Python、依赖安装或 PowerShell。在独立桌面窗口中可以保存配置并启动识题。
 
-网站首页只提供 App 下载与说明，API Key 不在网上填写。先前网页是交互预览，无法保存配置；该入口已改成明确的下载页。可选交互预览放在单独的 preview/，其“配置”按钮引导下载 App。
+应用在本机的独立窗口完成配置和识题。公开网站提供下载入口，静态交互预览在 `preview/`。
 
 便携 App 未做商业代码签名，不要求管理员权限。下载时可能出现 Windows 未知发布者提示；发布页提供 SHA256 校验文件。许可证与实际依赖的完整许可文本随包附带，包含 Python、PyInstaller 例外说明等。
 
@@ -12,11 +12,11 @@
 
 Windows 原生 App 默认使用约 440×640 的答案窗，可继续缩放。点“收起”为约 80×80 的置顶 AQ 方框；拖动方框顶部拖条可放到屏幕角落。点击 AQ 直接展开当前题的答案和解题说明，不会再次请求模型。新答案到达不会自动展开或抢焦点；F8 仍需在题目窗口位于前台时按下。
 
-展开后可选择答案文字、复制完整答案或逐空复制，再到目标应用自行粘贴。工作台只保留运行状态、答案与默认折叠的本次记录；模型、配对、应用更新在“模型与配置”，操作说明在“开始使用”。收起不退出，ESC 停止答题；展开后点窗口 × 或退出入口才完全关闭。
+展开后可选择答案文字、复制完整答案或逐空复制，再到目标应用自行粘贴。工作台只保留运行状态、答案与默认折叠的本次记录；模型、配对、应用更新在“模型与配置”，操作说明在“使用说明”。收起不退出，ESC 停止答题；展开后点窗口 × 或退出入口才完全关闭。
 
-日间与深色主题可以切换，主题偏好保存到配置目录的独立 `ui-preferences.json`，不进入 API Key 或模型配置。静态预览只保存本浏览器的主题；普通浏览器网页不能变成系统级悬浮窗，需使用下载的 Windows EXE。
+日间与深色主题可以切换，主题偏好保存到配置目录的独立 `ui-preferences.json`。
 
-截图时只排除或暂时隐藏本 App 的窗口，不隐藏题目窗口，也不切换到其他应用。实际支持与验证结果见 [0.6.0 验证记录](VALIDATION_0.6.0.md)。
+截图时会排除或短暂隐藏本应用窗口。请保持题目窗口在前台且内容完整可见。[Windows 0.6.0 发布说明](RELEASE_NOTES_0.6.0.md)。
 
 ## 检查、下载和安装更新
 
@@ -30,13 +30,11 @@ Windows 原生 App 默认使用约 440×640 的答案窗，可继续缩放。点
 
 版本检查使用独立的公开 HTTPS 请求，不发送 API Key、模型配置、题目、答案、截图或本机会话令牌。GitHub 可收到普通网络请求信息；离线 Demo 不调用模型，但 App 的更新检查仍会访问 GitHub。详见 [Privacy](../PRIVACY.md)。
 
-## 源码用户
+## 工作台与识题操作
 
-完整解压源码后，双击根目录 **AutoQuestion.pyw**。需要标准 Windows Python 3.10 或更新版本；如果 .pyw 没有关联，用 Python Launcher 打开。第一次会以图形窗口询问是否创建 .venv-win 并安装 requirements.txt，后续直接打开独立桌面工作台，不需要日常使用 PowerShell。首次准备需要网络；普通答题不要求安装 Playwright Chromium runtime。
+导航有“工作台”“模型与配置”和“使用说明”三个页面。无配置时直接显示首次配置；已有配置时读取当前用户的 AppData 配置，已保存 Key 不回传浏览器。点击启动后把题目窗口置前台再按 F8，答案与实际来源会显示在工作台。ESC 停止热键服务并释放资源，控制台保留以便重新启动。点击右上角 × 或“退出本机程序”会停止答题、清空内存记录、关闭本机服务并退出。最小化保持运行，再次双击只唤起已有窗口。正在执行的同步模型请求会完成或超时后清理；保存的配置和安全凭据保留。
 
-工作台有三个页面：答题工作台、模型与配置、开始使用。无配置时直接显示首次配置；已有配置时读取当前用户的 AppData 配置，已保存 Key 不回传浏览器。点击启动后把题目窗口置前台再按 F8，答案与实际来源会显示在工作台。ESC 停止热键服务并释放资源，控制台保留以便重新启动。点击右上角 × 或“退出本机程序”会停止答题、清空内存记录、关闭本机服务并退出。最小化保持运行，再次双击只唤起已有窗口。正在执行的同步模型请求会完成或超时后清理；保存的配置和安全凭据保留。
-
-0.6.0 已移除图形界面的离线 Demo 按钮和 Provider 选项。开发者仍可通过原命令行 Fake/MANUAL 夹具验证；预置答案不代表真实模型能力。受管理 DOM Demo 仍可用原有 --open-demo 命令；需要对应 Chromium runtime。答题运行期间设置不能修改，先停止再保存。
+0.6.0 的图形界面移除了离线 Demo 按钮和 Offline Demo 服务商选项。开发者仍可通过原命令行 Fake/MANUAL 夹具验证；预置答案不代表真实模型能力。受管理 DOM Demo 仍可用原有 --open-demo 命令；需要对应 Chromium runtime。答题运行期间设置不能修改，先停止再保存。
 
 同一屏幕中有多道完整题时，工作台先列出“同屏识别”的各题题干、答案与理由，点击某一题可查看该题的全部选项和置信度。单次最多 10 道；不会自动滚动或翻页，画面过小、裁切或遮挡可能漏题。内置 DOM Demo 可点击“同屏两道题：单选 + 多选”验证，返回普通 Demo 后单题流程继续可用。
 
@@ -50,37 +48,17 @@ Windows 原生 App 默认使用约 440×640 的答案窗，可继续缩放。点
 
 复制只在用户点击时写入系统剪贴板，不读取之前的剪贴板内容。复制后的内容可能保留在系统剪贴板或历史中，退出 App 不会清除它。
 
-## 第一次配置示例
+## 第一次配置
 
-API Base URL 填**服务根地址**，不要附加 /chat/completions，不要填聊天网站地址。Model ID 是服务商定义的模型标识，不是 URL。网页与原有控制台向导共用相同的服务商示例；示例不会自动选择模型或自动启用 Vision。
+在“模型与配置”选择服务商、填写 API Base URL 和 Model ID，再填自己的 API Key。需要读取窗口截图时，请为支持图片输入的模型启用图片能力。点击保存再启动识题。保存只执行本地格式校验。[API 配置指南](API_SETUP.md)。
 
-| Provider | Base URL | 示例模型 ID | 官方文档 |
-|---|---|---|---|
-| DeepSeek | https://api.deepseek.com | deepseek-flash、deepseek-v4-pro | [Quick Start](https://api-docs.deepseek.com/) |
-| Kimi | https://api.moonshot.cn/v1 | kimi-k3、kimi-k2.6 | [Quick Start](https://platform.kimi.com/docs/get-api-key) |
-| GLM | https://open.bigmodel.cn/api/paas/v4/ | glm-4.6v、glm-4.6v-flash | [Chat Completions](https://docs.bigmodel.cn/api-reference/模型-api/对话补全) |
-| OpenAI | https://api.openai.com/v1 | gpt-4.1-mini、gpt-4.1-mini-2025-04-14 | [模型文档](https://developers.openai.com/api/docs/models/gpt-4.1-mini) |
-| Custom | 服务商提供的 OpenAI-compatible API 根地址 | 服务商提供的 ID | 由用户确认 |
+Key 可选择 Windows 安全凭据保存或仅本次使用。更换 API 地址时须重新输入 Key。安全凭据不可用时，可主动选择仅本次使用。清理旧凭据见 [高级配置](CONFIGURATION.md)。
 
-官方资料核对日期：2026-10-13。模型列表和账户权限会变化，这不是完整目录，也不代表已进行真实 API 测试。DeepSeek 官方说明 deepseek-flash 支持标准 image_url 图片输入；deepseek-v4-pro 等其他模型的能力需单独确认。[DeepSeek Vision](https://api-docs.deepseek.com/guides/vision/)。
+## 数据与源码运行
 
-例如使用 DeepSeek 时：选择 DeepSeek → 根地址填 https://api.deepseek.com → Model ID 按账户选择 deepseek-flash 等 → 填平台创建的 API Key → 仅在确认该模型支持图片后勾选图片能力 → 保存 → 启动。不会检测 Key 真伪、联网拉模型或自动发收费测试请求。API 服务通常单独计费。
+工作台默认在本机服务处理配置和显示答案。记录只保留在当前进程内存，可在工作台清空，退出应用也会清空。模型请求由本机发送给配置的服务商。网页工作台按界面保存的设置运行，命令行支持环境变量、显式 `--env-file` 和单独的配置优先级。[隐私说明](../PRIVACY.md) · [安全模型](SECURITY_MODEL.md)。
 
-Key 可选择 Windows 安全凭据保存或仅本次使用。更换 API 地址时必须重新输入 Key；凭据保存不可用时给出明确错误，可由用户选择仅本次使用，不会自动降级为明文保存。旧安全凭据保留，删除仍走原有 --reset-config 的确认流程。
-
-## 本机服务边界
-
-网页控制台只监听 127.0.0.1 的随机端口。内嵌 WebView2 通过 URL fragment 接收本次随机会话令牌，随后从地址栏移除；令牌仅用于本机 API，在该端口的 sessionStorage 中保留以支持刷新。API Key 不存入 localStorage/sessionStorage，不回传已保存的值。API 要求正确 Host 与令牌；写请求还要求同源 Origin、JSON 内容类型和大小限制。没有 CORS 放行、远程登录或云端 API 代理。
-
-题目、答案及最多 20 条本次记录仅保留在本机进程内存中，可主动清空，退出销毁。界面使用 textContent 显示模型文本，不执行其中的 HTML。截图仍在内存中处理，模型请求依旧由原有后端发送给用户配置的服务商。Bridge 配对码仅在用户点击获取时回传到本机界面，30 秒后隐藏，不进入状态接口、记录或配置。
-
-网页启动以界面保存的配置为准，不读取 .env 或覆盖已保存的模型设置；命令行入口仍保留原有环境变量优先级。热键继续使用 F8/ESC。项目不提供 AutoQuestion 账号登录。请只对自己的题库、非计分练习和授权场景使用。
-
-## 在线交互预览与开发
-
-GitHub Pages 首页是 App 下载页，不提供假的在线配置表单。独立 preview/ 才是静态界面预览；禁用 Key 输入与本机操作。实际配置、F8 与模型调用由下载的 App 执行。
-
-开发者也可运行 `main.py --ui`。网站通过 `tools/build_web_preview.py` 导出到被忽略的 dist/site/；Windows App 在 dist/windows/，发布工作流不会把该目录混入网站。前端无需 Node、npm 或第三方 CDN。
+如需从源码启动桌面窗口，参见 [源码安装和开发](DEVELOPMENT.md)。公开网站的静态预览禁用 Key 输入和工作台本机操作。[网站预览](https://billstar0128-jpg.github.io/AutoQuestion/preview/)。
 
 ## 桌面窗口与运行环境
 

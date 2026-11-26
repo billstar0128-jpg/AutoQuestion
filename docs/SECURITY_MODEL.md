@@ -6,7 +6,8 @@
 
 ## Controls
 
-- Key 不进入普通 JSON、日志或对象 repr。Windows 原生安全存储只允许 `AutoQuestion/<profile>/<reference>` 命名空间；session-only 不落盘。
+- Windows Key 使用 Credential Manager 的 `AutoQuestion/<profile>/<reference>` 命名空间，或仅保存在当前会话内存。Android 使用 Keystore 中不可导出的 AES 密钥执行 AES-GCM 加密，密文保存在应用私有配置并关闭备份。
+- Windows 工作台只监听 127.0.0.1 的随机端口。WebView2 在 URL fragment 接收随机会话令牌，随后清除 fragment，在本机 sessionStorage 保留令牌以支持刷新。请求验证 Host 和令牌，写请求再验证同源 Origin、JSON 类型和大小。严格 CSP 限制资源，已保存的 Key 不回传界面。
 - Setup 输入遮罩/隐藏，无法安全隐藏则拒绝输入；确认保存前不写配置、不启动热键/浏览器。配置与凭据分开写，失败尽量回滚新引用。
 - 窗口目标在 F8 时固定；PID/HWND/边界变化取消捕获，拒绝全屏兜底。32M 原始像素、最长边限制和 8 MiB PNG 上限控制内存。
 - DOM 不读 Cookie、LocalStorage、SessionStorage、输入值、认证头或 whole HTML。只在自有 Demo 或已配对且授权站点的扩展会话执行只读语义提取。

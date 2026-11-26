@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta
       name="description"
-      content="下载 AutoQuestion Windows App 和 Android 悬浮识题 App，同屏客观、填空和简答解答题分别给出答案，支持复制。"
+      content="下载 AutoQuestion 跨平台屏幕题目 AI 解析助手，支持 Windows 网页结构化读取、两端截图识别和多模型接入。"
     />
     <title>AutoQuestion · 下载 App</title>
     <link rel="stylesheet" href="download.css" />
@@ -24,9 +24,9 @@
       <section class="hero">
         <div>
           <span class="eyebrow">WINDOWS v@@VERSION@@ · ANDROID v@@ANDROID_VERSION@@</span>
-          <h1>题目在屏幕上。<br />答案，在一个 <em>F8</em> 之后。</h1>
+          <h1>跨平台屏幕题目<br /><em>AI 解析助手</em></h1>
           <p>
-            下载到电脑，双击打开。<br />在本机界面配置模型、启动答题、查看结果。
+            读取网页题目或分析屏幕截图，在练习中查看参考答案与解题说明。
           </p>
           <a
             class="button primary"
@@ -38,7 +38,7 @@
             href="https://github.com/billstar0128-jpg/AutoQuestion/releases/download/v@@ANDROID_VERSION@@/AutoQuestion-@@ANDROID_VERSION@@-Android.apk"
             >下载 Android APK <span>↓</span></a>
           <div class="download-note">
-            Windows ZIP 内含 AutoQuestion.exe，无需 Python；完整解压后双击运行。
+            两端下载均为公开预发布版。Windows ZIP 完整解压后双击 AutoQuestion.exe，无需 Python。
           </div>
         </div>
         <div class="app-window" aria-label="App 界面示意">
@@ -105,19 +105,18 @@
             使用你在服务商平台创建的密钥。
           </p>
           <a
-            href="https://api-docs.deepseek.com/"
+            href="https://github.com/billstar0128-jpg/AutoQuestion/blob/main/docs/API_SETUP.md"
             target="_blank"
             rel="noreferrer"
-            >查看官方文档 ↗</a
+            >查看 API 配置指南 ↗</a
           >
         </div>
         <div class="example">
           <label>API Base URL</label><code>https://api.deepseek.com</code
           ><label>Model ID 示例</label
-          ><code>deepseek-flash / deepseek-v4-pro</code>
+          ><code>deepseek-flash</code>
           <p>
-            只填根地址，不要加
-            /chat/completions。图片能力按具体模型确认，示例与权限以官方文档为准。
+            Base URL 填服务根地址。模型的图片能力、账户权限和价格以服务商文档为准。
           </p>
         </div>
       </section>

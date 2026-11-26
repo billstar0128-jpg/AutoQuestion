@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "autoquestion"
-description = "Windows question assistant with optional browser DOM and foreground Vision input"
+description = "An open-source AI question analysis assistant for Windows and Android, with structured UI extraction and multimodal recognition."
 readme = "README.md"
 requires-python = ">=3.10"
 dynamic = ["version", "dependencies"]

@@ -1,6 +1,6 @@
-# Advanced Configuration / Troubleshooting
+# Windows 高级配置与诊断
 
-普通用户先按 [README](../README.md) 使用向导。优先级：process environment > explicit `--env-file` > AppData config > defaults。程序不会自动寻找 `.env`，文件不做变量插值，向导不修改环境变量。
+首次设置方式及模型示例见 [API 配置指南](API_SETUP.md)。以下优先级适用于 Windows 命令行。优先级：process environment > explicit `--env-file` > AppData config > defaults。程序不会自动寻找 `.env`，文件不做变量插值，向导不修改环境变量。
 
 | Variable | Default / constraint |
 |---|---|
@@ -60,4 +60,4 @@ Doctor 的 PASS/WARNINGS 退出 0，FAIL 退出 1。Chromium probe 是隔离可�
 | 目标移动/切换/关闭 | 重新把题目置前台后 F8 |
 | 可见 smoke 焦点失败 | 在交互终端重跑，测试窗口保持前台，不放宽身份保护 |
 
-详见 [Privacy](../PRIVACY.md) 和 [Manual Acceptance](MANUAL_ACCEPTANCE_M13.md)。
+常用安装、更新和识题问题见 [FAQ](FAQ.md)，数据边界见 [隐私说明](../PRIVACY.md)。

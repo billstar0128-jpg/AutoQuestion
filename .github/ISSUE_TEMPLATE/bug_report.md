@@ -7,12 +7,13 @@ assignees: ''
 ---
 
 Please do not upload API Keys, credentials, credential dumps, private screenshots,
-personal window content or raw sensitive logs. Security flaws follow SECURITY.md.
+personal window content or raw sensitive logs. For vulnerabilities, follow the [security policy](https://github.com/billstar0128-jpg/AutoQuestion/security/policy).
 
 ## Environment
 
-Windows / Python / AutoQuestion version:
-Input mode and Provider profile (no Key):
+Windows or Android version and device:
+AutoQuestion version and installation source:
+Input mode and provider profile (no Key):
 
 ## Reproduction
 
@@ -22,5 +23,4 @@ Actual behavior:
 
 ## Diagnostics
 
-Attach --doctor output only after removing personal paths and checking privacy.
-Doctor checks metadata, not whether a real Key or model works.
+On Windows, attach sanitized `--doctor` output, if relevant. Doctor checks local metadata only.

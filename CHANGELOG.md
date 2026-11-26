@@ -93,7 +93,7 @@
 
 - Canvas/image-heavy pages, complex iframe/Shadow DOM and ambiguous controls may fall back to Vision.
 - fill_blank / short_answer remain unsupported; no automatic clicking, submission or next question.
-- Chrome / Edge support is implemented and covered by automated/local fixture tests. Real GUI acceptance was skipped before release by explicit user decision and remains a non-blocking follow-up.
+- Chrome / Edge DOM was exercised with local fixtures and automation. The full interactive browser workflow remained unverified at the time of this release.
 
 ## 0.1.0rc1 — Public Release Candidate (Pre-release)
 
