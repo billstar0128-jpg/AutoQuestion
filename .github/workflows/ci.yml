@@ -6,6 +6,23 @@ on:
 permissions:
   contents: read
 jobs:
+  markdown-links:
+    name: Markdown links
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Check Markdown links and anchors
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          lycheeVersion: v0.24.2
+          args: >-
+            --root-dir "$GITHUB_WORKSPACE" --no-progress --include-fragments
+            --exclude-loopback --timeout 15 --max-retries 2
+            './**/*.md' './.github/**/*.md'
+
   test:
     runs-on: windows-latest
     timeout-minutes: 20
@@ -48,4 +65,4 @@ jobs:
       - run: .\.venv-win\Scripts\python.exe main.py --doctor
       # Visible HWND/focus smoke and real providers/credentials are local manual tests.
       # MV3 integration uses an owned headless Chromium profile and a synthetic host grant.
-      # Real Chrome/Edge GUI acceptance is a non-blocking post-release follow-up by owner decision.
+      # Real Chrome/Edge GUI acceptance requires a separate manual check.
